@@ -21,7 +21,7 @@ const log = scopedLogger('auth');
 const COOKIE_NAME = 'vs_session';
 const SESSION_PURPOSE = 'session-v3';
 
-/** Failed logins per IP, to blunt password guessing. */
+/** Failed logins per IP and per login name ('ip:…' / 'login:…'), to blunt password guessing from one or many addresses. */
 const MAX_ATTEMPTS = 10;
 const LOCKOUT_MS = 15 * 60 * 1000;
 const attempts = new Map<string, { count: number; firstAt: number }>();
@@ -89,24 +89,27 @@ function unauthorized(res: Response): void {
 }
 
 export function login(req: Request, res: Response): void {
-  const ip = clientIp(req);
-  if (isLockedOut(ip)) {
+  const ip = `ip:${clientIp(req)}`;
+  const loginName = typeof req.body?.login === 'string' ? req.body.login : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const account = `login:${loginName.trim().toLowerCase().slice(0, 64)}`;
+  if (isLockedOut(ip) || isLockedOut(account)) {
     res.status(429).json({ ok: false, error: 'Слишком много попыток. Подожди 15 минут.' });
     return;
   }
 
-  const loginName = typeof req.body?.login === 'string' ? req.body.login : '';
-  const password = typeof req.body?.password === 'string' ? req.body.password : '';
   const user = loginName && password ? verifyCredentials(loginName, password) : null;
 
   if (!user) {
     recordFailure(ip);
+    if (loginName) recordFailure(account);
     log.warn(`Неудачный вход «${loginName.slice(0, 40)}» с ${ip}`);
     res.status(401).json({ ok: false, error: 'Неверный логин или пароль.' });
     return;
   }
 
   attempts.delete(ip);
+  attempts.delete(account);
   const expiresAt = Date.now() + sessionTtlMs();
   res.setHeader('Set-Cookie', buildCookie(signSession(expiresAt, user), sessionTtlMs()));
   log.info(`Вход «${user.login}» (${user.role}) с ${ip}`);
@@ -186,6 +189,11 @@ function isLockedOut(ip: string): boolean {
 }
 
 function recordFailure(ip: string): void {
+  // Made-up login names must not grow the map forever: drop expired entries now and then.
+  if (attempts.size > 5000) {
+    const now = Date.now();
+    for (const [key, e] of attempts) if (now - e.firstAt > LOCKOUT_MS) attempts.delete(key);
+  }
   const entry = attempts.get(ip);
   if (!entry || Date.now() - entry.firstAt > LOCKOUT_MS) {
     attempts.set(ip, { count: 1, firstAt: Date.now() });

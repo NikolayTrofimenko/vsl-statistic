@@ -26,6 +26,7 @@ export function createApp(): express.Express {
   app.disable('x-powered-by');
   // Deployed behind nginx/Caddy, so honour X-Forwarded-* for client IPs.
   app.set('trust proxy', true);
+  app.use(securityHeaders);
 
   /* ---------- public: health, auth ---------- */
 
@@ -198,12 +199,32 @@ function mountRenderer(app: express.Express): void {
   });
 }
 
+/**
+ * HTTPS only from now on (HSTS); never inside someone else's frame
+ * (clickjacking on buy/share buttons); no full URLs leaked to other sites.
+ * The landing tracker (/t.js, /api/collect) is loaded as a script and beaconed
+ * to, never framed, so it is unaffected.
+ */
+function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+}
+
+/** Something nobody planned for: details go to the log, not to the browser. */
 function errorHandler(err: unknown, _req: Request, res: Response, next: NextFunction): void {
   if (res.headersSent) {
     next(err);
     return;
   }
-  const message = err instanceof Error ? err.message : String(err);
   log.error('Необработанная ошибка запроса', err);
-  res.status(500).json({ ok: false, error: message });
+  const status = (err as { status?: number } | null)?.status;
+  // Body-parser errors (too large, bad JSON) carry a 4xx status and a harmless message.
+  if (status && status >= 400 && status < 500) {
+    res.status(status).json({ ok: false, error: status === 413 ? 'Слишком большой запрос.' : 'Некорректный запрос.' });
+    return;
+  }
+  res.status(500).json({ ok: false, error: 'Внутренняя ошибка сервера. Подробности в логе.' });
 }
