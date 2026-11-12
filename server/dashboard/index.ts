@@ -3,6 +3,7 @@ import { kaitenCardUrl, kaitenConfigured, kaitenSyncedAt } from '../kaiten';
 import { Card, firstEntry, loadCards } from './cards';
 import { linkDetail, linkMetrics, linksByBuyer, loadLinks } from './links';
 import { taskDetail, taskMetrics } from './tasks';
+import { archiveDetail, archiveMetric } from './archive';
 import { dayIn, endOf, fmtDay, inside, periodOf, shortLabel, today, TZ } from './periods';
 import type {
   DashBlock,
@@ -405,7 +406,7 @@ export async function dashboard(kind: DashPeriodKind, anchor: string | null): Pr
   const hasKaiten = kaitenConfigured();
   const people = hasKaiten ? loadPeople() : [];
   const links = hasKaiten ? loadLinks() : null;
-  const [profit, buying] = await Promise.all([profitMetric(periods), buyingPanel(period, links)]);
+  const [profit, buying, found] = await Promise.all([profitMetric(periods), buyingPanel(period, links), archiveMetric(periods)]);
 
   const blocks: DashBlock[] = [
     hasKaiten
@@ -440,7 +441,7 @@ export async function dashboard(kind: DashPeriodKind, anchor: string | null): Pr
       id: 'analytics',
       title: 'Аналитика',
       metrics: [
-        pending('analytics.found', 'Связок найдено и передано в отдел масштабирования', 'Архив на Google Диске — ждём ссылку'),
+        found,
         ...(links
           ? [...linkMetrics(links, periods, 'analytics'), ...taskMetrics(periods)]
           : [
@@ -485,6 +486,7 @@ export async function dashboard(kind: DashPeriodKind, anchor: string | null): Pr
 export async function dashboardDetail(metricId: string, kind: DashPeriodKind, anchor: string): Promise<DashDetail> {
   const period = periodOf(kind === 'month' ? 'month' : 'week', /^\d{4}-\d{2}-\d{2}$/.test(anchor) ? anchor : today());
   if (metricId === 'buying.profit') return profitDetail(period);
+  if (metricId === 'analytics.found') return archiveDetail(period);
   if (metricId === 'analytics.tech' || metricId === 'analytics.promo') return taskDetail(metricId, period);
   if (/^(buying|marketing|analytics)\./.test(metricId)) return linkDetail(metricId, period);
   if (metricId.startsWith('hiring.')) return hiringDetail(metricId, period);
