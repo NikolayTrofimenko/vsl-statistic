@@ -1,0 +1,33 @@
+# Compiled output
+/dist
+/dist-server
+/out-tsc
+/tmp
+
+# Node
+/node_modules
+npm-debug.log
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Angular cache
+/.angular/cache
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Local data (SQLite, thumbnails, logs) and secrets
+/data
+/.env
+
+# Sample landing: reference only, carries a partner API token in order.php
+/example-land/
+
+# Screen recordings dropped into the project root
+/*.mp4
+/*.mov

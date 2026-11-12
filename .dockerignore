@@ -1,0 +1,11 @@
+.git
+.angular
+node_modules
+dist
+dist-server
+example-land
+*.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+.env

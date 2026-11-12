@@ -1,0 +1,13 @@
+services:
+  vsl-statistic:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      # Bound to loopback: terminate TLS with nginx/Caddy in front of it.
+      - '127.0.0.1:4310:4310'
+    volumes:
+      - vsl-statistic-data:/data
+
+volumes:
+  vsl-statistic-data:

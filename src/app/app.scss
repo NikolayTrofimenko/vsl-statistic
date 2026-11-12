@@ -1,0 +1,193 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+.app-shell {
+  height: 100vh;
+}
+
+.app-sidenav {
+  width: 220px;
+  padding: 8px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Blank canvas while the session check is in flight — a spinner here would
+   flash on every reload, since the check normally resolves in milliseconds. */
+.app-booting {
+  height: 100vh;
+}
+
+.sidenav-footer {
+  margin-top: auto;
+  padding-top: 8px;
+
+  .logout-button {
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 13px;
+    color: var(--text-faint);
+  }
+
+  .who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    min-width: 0;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: var(--text-faint);
+    }
+  }
+  .who-login {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .who-role {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 8px 18px;
+  margin-bottom: 4px;
+
+  .brand-mark {
+    color: var(--text);
+    flex: 0 0 auto;
+  }
+
+  /* Wordmark in the brand's label voice: mono, uppercase, wide tracking.
+     The parent brand leads and the product follows it, so the sidebar says
+     what this is and whose it is in one line. */
+  .brand-text {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    /* Wide enough to read as a wordmark, tight enough that
+       "EUPHORIA / ANALYTICS" still fits the 220px rail. */
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .brand-parent {
+    color: var(--text);
+  }
+  .brand-sep {
+    color: var(--divider-strong);
+  }
+  .brand-product {
+    color: var(--text-faint);
+  }
+}
+
+mat-nav-list {
+  padding: 0 !important;
+
+  .mat-mdc-list-item {
+    --mdc-list-list-item-one-line-container-height: 32px;
+    --mdc-list-list-item-label-text-size: 13px;
+    --mdc-list-list-item-label-text-color: var(--text);
+    --mdc-list-list-item-leading-icon-start-space: 8px;
+    --mdc-list-list-item-leading-icon-end-space: 8px;
+    --mdc-list-list-item-hover-state-layer-color: var(--text);
+    --mdc-list-list-item-hover-state-layer-opacity: 0.06;
+    --mdc-list-list-item-focus-state-layer-opacity: 0.08;
+    height: 32px !important;
+    margin-bottom: 6px;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    border-radius: 0;
+  }
+
+  /* Tighten the gap between icon and label. */
+  .mat-mdc-list-item .mdc-list-item__start {
+    margin-right: 8px !important;
+    margin-left: 0 !important;
+  }
+
+  .mat-mdc-list-item .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    color: var(--text-muted);
+  }
+}
+
+.nav-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  min-width: 18px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 0;
+  font-variant-numeric: tabular-nums;
+  vertical-align: 1px;
+}
+
+/* The current page is marked with a rail, not a filled band. "The background
+   is flat and calm" is a direct instruction from the brandbook, and a tinted
+   block across the whole item is the loudest thing in the sidebar. */
+a.mat-mdc-list-item.active {
+  position: relative;
+  background-color: transparent !important;
+
+  --mdc-list-list-item-label-text-color: var(--text);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent-text);
+  }
+
+  .mat-icon {
+    color: var(--accent-text);
+  }
+}
+
+.app-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  padding: 24px 28px;
+  overflow: auto;
+  min-height: 0;
+
+  &.full {
+    padding: 0;
+    overflow: hidden;
+  }
+}

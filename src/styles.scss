@@ -1,0 +1,1158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   EUPHORIA identity — tokens
+   ============================================================
+
+   Seven colours from EUPHORIA_Avatar_Kit/design-tokens.json, used in the
+   proportion the brandbook asks for: 70% graphite, 20% ivory, 10% accent.
+
+   Burgundy is split into two tokens on purpose. #611F2A is a plane colour —
+   at 8.5:1 against ivory it makes an excellent filled button, but as *text*
+   on graphite it drops to 1.6:1 and disappears. So the deep burgundy fills,
+   and a lifted #8C3040 carries every mark you have to read: links, labels,
+   focus rings, the active nav item.
+
+   Burgundy also never signals state. A landing that failed to process is
+   warm rose, not brand red — otherwise the "Run" button reads as an alarm.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* Ivory is the brand's light plane, but as a page background it is too warm
+     to read long tables against. The page sits a shade below it so ivory can
+     stay what it is: the surface that holds content. */
+  --bg: #e9e4d9;
+  --surface: #f3efe6;
+  --surface-2: #efeae0;
+  --surface-3: #e4ded1;
+  --hover: rgba(23, 23, 25, 0.04);
+  --hover-strong: rgba(23, 23, 25, 0.07);
+  --divider: #d8d2c4;
+  --divider-strong: #c6bfae;
+  --text: #171719;
+  --text-strong: #0d0d0f;
+  --text-muted: #6e675c;
+  --text-faint: #8a8378;
+
+  /* On ivory the deep burgundy is legible on its own (9.7:1), so both roles
+     collapse onto one value here. */
+  --accent: #611f2a;
+  --accent-text: #611f2a;
+  --accent-hover: #7a2735;
+  --accent-contrast: #f3efe6;
+  --accent-soft: rgba(97, 31, 42, 0.1);
+  --accent-border: rgba(97, 31, 42, 0.35);
+  --ring: rgba(97, 31, 42, 0.3);
+
+  /* State colours darkened until they read as text on ivory; the brandbook
+     values are tuned for graphite and sit at ~2.6:1 here. */
+  --danger: #9b4a40;
+  --danger-soft: rgba(155, 74, 64, 0.1);
+  --success: #3f6b50;
+  --success-soft: rgba(63, 107, 80, 0.1);
+  --warn: #7a6636;
+  --warn-soft: rgba(122, 102, 54, 0.1);
+
+  --code-bg: rgba(23, 23, 25, 0.05);
+  --code-text: #4a453d;
+  --scrollbar: rgba(23, 23, 25, 0.2);
+  --scrollbar-hover: rgba(23, 23, 25, 0.35);
+  --option-zebra: rgba(23, 23, 25, 0.022);
+  --snackbar-bg: #171719;
+  --snackbar-text: #f3efe6;
+  --field-hover-border: rgba(23, 23, 25, 0.25);
+
+  --shadow-soft: none;
+  --shadow-pop: none;
+
+  /* ---- shape ----------------------------------------------
+     Square. "Closed. Precise. In control." — and the brandbook bans volume
+     outright, which is what a rounded, shadowed card is made of. Depth is
+     expressed with a line, never with a blur. */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+
+  /* ---- type -----------------------------------------------
+     Three families, three jobs. Serif for screen titles only — it carries
+     weight large and gets in the way small. Sans for the whole interface.
+     Mono for anything you compare rather than read: offer ids, file paths,
+     macros, sizes, timings. */
+  --font-serif: 'Playfair Display Variable', 'Playfair Display', Georgia, serif;
+  --app-font: 'Onest', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
+
+  /* Letter-spaced uppercase mono — the brand's voice for labels and eyebrows. */
+  --label-spacing: 0.14em;
+
+  --mat-sys-primary: var(--accent-text);
+  --mat-sys-on-primary: var(--accent-contrast);
+  --mat-sys-primary-container: var(--accent-soft);
+  --mat-sys-on-primary-container: var(--accent-text);
+  --mat-sys-inverse-primary: var(--accent-text);
+  --mat-sys-surface-tint: var(--accent-text);
+
+  /* Force Material/MDC components to use our font instead of Roboto. */
+  --mdc-typography-font-family: var(--app-font);
+  --mdc-typography-body1-font-family: var(--app-font);
+  --mdc-typography-body2-font-family: var(--app-font);
+  --mdc-typography-button-font-family: var(--app-font);
+  --mdc-typography-caption-font-family: var(--app-font);
+  --mdc-typography-subtitle1-font-family: var(--app-font);
+  --mdc-typography-subtitle2-font-family: var(--app-font);
+  --mdc-typography-headline1-font-family: var(--app-font);
+  --mdc-typography-headline2-font-family: var(--app-font);
+  --mdc-typography-headline3-font-family: var(--app-font);
+  --mdc-typography-headline4-font-family: var(--app-font);
+  --mdc-typography-headline5-font-family: var(--app-font);
+  --mdc-typography-headline6-font-family: var(--app-font);
+
+  /* Angular Material 20 component-specific font tokens. */
+  --mat-table-row-item-label-text-font: var(--app-font);
+  --mat-table-header-headline-font: var(--app-font);
+  --mat-table-footer-supporting-text-font: var(--app-font);
+  --mat-paginator-container-text-font: var(--app-font);
+  --mat-paginator-select-trigger-text-font: var(--app-font);
+  --mat-form-field-container-text-font: var(--app-font);
+  --mat-form-field-subscript-text-font: var(--app-font);
+  --mat-select-trigger-text-font: var(--app-font);
+  --mat-option-label-text-font: var(--app-font);
+  --mat-menu-item-label-text-font: var(--app-font);
+  --mat-tab-header-label-text-font: var(--app-font);
+  --mat-snack-bar-button-color: var(--accent-text);
+  --mdc-snackbar-supporting-text-font: var(--app-font);
+}
+
+/* ============================================================
+   Dark theme — the brand's own world: graphite, ivory, burgundy.
+   Toggled by adding the `.dark` class to <html> (ThemeService).
+   ============================================================ */
+:root.dark {
+  color-scheme: dark;
+
+  --bg: #0d0d0f;
+  --surface: #171719;
+  --surface-2: #131315;
+  --surface-3: #1e1e21;
+  --hover: rgba(243, 239, 230, 0.045);
+  --hover-strong: rgba(243, 239, 230, 0.08);
+  --divider: #232326;
+  --divider-strong: #2a2a2e;
+  --text: #f3efe6;
+  --text-strong: #faf7f0;
+  --text-muted: #b9b0a3;
+  --text-faint: #77777d;
+
+  --accent: #611f2a;
+  --accent-text: #8c3040;
+  --accent-hover: #a03a4c;
+  --accent-contrast: #f3efe6;
+  --accent-soft: rgba(140, 48, 64, 0.18);
+  --accent-border: rgba(140, 48, 64, 0.55);
+  --ring: rgba(140, 48, 64, 0.45);
+
+  --danger: #c4756b;
+  --danger-soft: rgba(196, 117, 107, 0.15);
+  --success: #6e9c7e;
+  --success-soft: rgba(110, 156, 126, 0.15);
+  --warn: #b9a06a;
+  --warn-soft: rgba(185, 160, 106, 0.15);
+
+  --code-bg: rgba(243, 239, 230, 0.06);
+  --code-text: #bfc1c4;
+  --scrollbar: rgba(243, 239, 230, 0.16);
+  --scrollbar-hover: rgba(243, 239, 230, 0.3);
+  --option-zebra: rgba(243, 239, 230, 0.03);
+  --snackbar-bg: #1e1e21;
+  --snackbar-text: #f3efe6;
+  --field-hover-border: rgba(243, 239, 230, 0.22);
+
+  --shadow-soft: none;
+  --shadow-pop: none;
+
+  /* Remap the full Material M3 surface/text scale so every component we
+     don't fully restyle (dialogs, tables, menus, sidenav, tabs, …) goes
+     dark instead of falling back to the light prebuilt theme. */
+  --mat-sys-background: var(--bg);
+  --mat-sys-on-background: var(--text);
+  --mat-sys-surface: var(--surface);
+  --mat-sys-surface-dim: var(--surface-2);
+  --mat-sys-surface-bright: var(--surface-3);
+  --mat-sys-surface-container-lowest: var(--surface-2);
+  --mat-sys-surface-container-low: var(--surface);
+  --mat-sys-surface-container: var(--surface);
+  --mat-sys-surface-container-high: var(--surface-3);
+  --mat-sys-surface-container-highest: var(--surface-3);
+  --mat-sys-surface-variant: var(--surface-3);
+  --mat-sys-on-surface: var(--text);
+  --mat-sys-on-surface-variant: var(--text-muted);
+  --mat-sys-outline: var(--divider-strong);
+  --mat-sys-outline-variant: var(--divider);
+  --mat-sys-inverse-surface: #f3efe6;
+  --mat-sys-inverse-on-surface: #171719;
+  --mat-sys-shadow: #000000;
+  --mat-sys-scrim: #000000;
+
+  --mdc-theme-surface: var(--surface);
+  --mdc-theme-on-surface: var(--text);
+  --mdc-dialog-container-color: var(--surface);
+  --mdc-dialog-supporting-text-color: var(--text-muted);
+  --mdc-dialog-subhead-color: var(--text);
+  --mat-menu-container-color: var(--surface);
+  --mat-select-panel-background-color: var(--surface);
+  --mdc-checkbox-unselected-icon-color: var(--text-faint);
+  --mdc-checkbox-unselected-hover-icon-color: var(--text-muted);
+}
+
+/* A filled primary button is a plane, so it takes the deep burgundy rather
+   than the lifted text colour Material derives everything else from. */
+:root .mat-mdc-unelevated-button.mat-primary,
+:root .mat-mdc-raised-button.mat-primary {
+  --mdc-filled-button-container-color: var(--accent);
+  --mdc-filled-button-label-text-color: var(--accent-contrast);
+  --mdc-protected-button-container-color: var(--accent);
+  --mdc-protected-button-label-text-color: var(--accent-contrast);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  font-family: var(--app-font);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Onest is drawn tight already; the negative tracking that suited Inter
+     closes it up past the point where Cyrillic stays comfortable. */
+  letter-spacing: normal;
+  font-feature-settings:
+    'calt' on,
+    'liga' on;
+}
+
+/* ---- the three routes ------------------------------------
+
+   Serif titles are the one place the brand speaks in its own voice. They are
+   set large and used once per screen; below ~20px the serifs start competing
+   with the data underneath them, which is why nothing small gets them. */
+h1,
+h2,
+.page-title {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Anything you scan a column of rather than read a line of: ids, paths,
+   sizes, durations, macros. A monospaced column lines its digits up, so the
+   odd one out is visible without reading any of them. */
+code,
+pre,
+kbd,
+samp,
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Uppercase mono in wide tracking — the brand's label voice, used for
+   eyebrows, column heads and status words. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: var(--label-spacing);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.mat-typography,
+.mat-mdc-button,
+.mat-mdc-form-field,
+.mat-mdc-menu-panel,
+.mat-mdc-select-panel,
+.mat-mdc-option,
+.mat-mdc-table,
+.mat-mdc-cell,
+.mat-mdc-header-cell,
+.mat-mdc-footer-cell,
+.mat-mdc-paginator,
+.mat-mdc-paginator-container,
+.mdc-list-item__primary-text,
+input,
+button,
+textarea,
+select {
+  font-family: var(--app-font) !important;
+  font-feature-settings: inherit;
+  letter-spacing: normal !important;
+}
+
+/* Angular Material points a dozen slots at bare `Roboto` with no fallback of
+   its own. On a machine without Roboto — which is every stock Windows box —
+   the browser drops to its default *standard* family, and that family is a
+   serif. Field labels, tab titles and checkbox captions were quietly being
+   set in Times New Roman. Naming the family once, broadly, is cheaper and
+   more durable than chasing each component token as Material renames them. */
+.mat-mdc-form-field,
+.mat-mdc-tab-group,
+.mat-mdc-tab-header,
+.mat-button-toggle-group,
+.mdc-form-field,
+.mat-mdc-checkbox,
+.mat-mdc-radio-button,
+.mat-mdc-slide-toggle,
+.mat-mdc-slider {
+  /* !important because Material's own rules for these parts are more specific
+     than any sane selector reaching in from outside. */
+  &,
+  & *:not(.mat-icon):not(.mat-icon *) {
+    font-family: var(--app-font) !important;
+  }
+
+  /* …but identifiers inside those components stay monospaced. */
+  code,
+  pre,
+  .mono {
+    font-family: var(--font-mono) !important;
+  }
+}
+
+/* Button toggles ship with the light prebuilt theme's selected state — a pale
+   lavender block that belongs to no theme we have. */
+.mat-button-toggle-group {
+  --mat-button-toggle-selected-state-background-color: var(--accent-soft);
+  --mat-button-toggle-selected-state-text-color: var(--accent-text);
+  --mat-button-toggle-background-color: transparent;
+  --mat-button-toggle-text-color: var(--text-muted);
+  --mat-button-toggle-divider-color: var(--divider);
+  --mat-button-toggle-shape: 0;
+  --mat-button-toggle-label-text-font: var(--app-font);
+  border-color: var(--divider) !important;
+}
+
+/* Tabular numerals everywhere with numbers (tables, paginators, payouts). */
+.mat-mdc-table,
+.mat-mdc-paginator,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Minimal scrollbar in Apple style */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 0;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+  background-clip: padding-box;
+}
+
+/* ============================================================
+   Page header helper (used on all list pages)
+   ============================================================ */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+
+  /* The one serif on the screen, and the only place the brand speaks in its
+     own voice. It works here because it appears once, large, with nothing
+     competing next to it. */
+  h1 {
+    font-family: var(--font-serif);
+    font-size: 27px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    color: var(--text);
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    max-width: 46rem;
+  }
+}
+
+/* The third route: anything you scan a column of rather than read a line of.
+   Ids, byte counts, file counts, payouts and timestamps line up digit under
+   digit in a monospaced column, so the odd value stands out without reading
+   any of them. Names and URLs stay in the sans — those you actually read. */
+.mat-column-id,
+.mat-column-size,
+.mat-column-fileCount,
+.mat-column-downloadedAt,
+.mat-column-payout,
+.mat-column-country,
+.mat-column-alias {
+  &.mat-mdc-cell {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+}
+
+/* An id is what you copy and paste into Keitaro, so it keeps full contrast. */
+.mat-column-id.mat-mdc-cell {
+  color: var(--text);
+}
+
+/* Column heads are labels, not prose: tracked uppercase mono is the brand's
+   voice for them, and it keeps the head visually distinct from the data. */
+.mat-mdc-header-cell {
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  letter-spacing: var(--label-spacing) !important;
+  text-transform: uppercase;
+  color: var(--text-faint) !important;
+}
+
+/* ============================================================
+   Material Card → flat surface
+   ============================================================ */
+.mat-mdc-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--divider) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-soft) !important;
+  overflow: hidden;
+}
+
+/* ============================================================
+   Buttons — Apple flat
+   ============================================================ */
+.mat-mdc-button-base {
+  font-weight: 500 !important;
+  letter-spacing: -0.005em !important;
+  border-radius: 0 !important;
+  --mdc-text-button-label-text-tracking: 0;
+  --mdc-filled-button-label-text-tracking: 0;
+  --mdc-outlined-button-label-text-tracking: 0;
+}
+
+.mat-mdc-outlined-button:not(:disabled) {
+  --mdc-outlined-button-outline-color: var(--accent-border);
+  --mdc-outlined-button-label-text-color: var(--accent);
+  background: transparent;
+  color: var(--accent);
+
+  .mat-icon {
+    color: var(--accent);
+  }
+
+  &:hover {
+    background: var(--accent-soft);
+  }
+}
+
+.mat-mdc-unelevated-button {
+  --mdc-filled-button-container-color: var(--accent);
+  --mdc-filled-button-label-text-color: var(--accent-contrast);
+  --mat-mdc-button-persistent-ripple-color: var(--accent-contrast);
+  color: var(--accent-contrast);
+
+  &:hover {
+    --mdc-filled-button-container-color: var(--accent-hover);
+  }
+  .mat-icon {
+    color: var(--accent-contrast);
+  }
+}
+
+/* ============================================================
+   Form fields — Apple-style: inset stacked label.
+
+   Layout:  [ label (small, muted)             ]
+            [ input / select / textarea        ]
+
+   We dissolve Material's notched-outline DOM with `display: contents`
+   so the floating label becomes a regular flex item next to the
+   infix, sitting on its own row above it. No more absolute
+   positioning ⇒ no more silent clipping by the notch.
+   ============================================================ */
+.mat-mdc-form-field {
+  font-size: 13px;
+  letter-spacing: -0.011em;
+}
+
+.mat-mdc-form-field.mat-form-field-appearance-outline {
+  .mat-mdc-form-field-focus-overlay {
+    background: transparent !important;
+  }
+
+  /* 1) Drop the notched outline DOM out of the layout.
+        `display: contents` makes the wrapper invisible to flex/grid,
+        so its children (the floating label, primarily) become direct
+        children of `.mat-mdc-form-field-flex`. */
+  .mdc-notched-outline {
+    display: contents !important;
+    border: none !important;
+    background: transparent !important;
+  }
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__trailing {
+    display: none !important;
+  }
+  .mdc-notched-outline__notch {
+    display: contents !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* 2) The wrapper is our single visible field card. */
+  .mat-mdc-text-field-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--divider-strong);
+    border-radius: 0;
+    padding: 0 !important;
+    overflow: visible !important;
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease,
+      background-color 120ms ease;
+
+    &:hover {
+      border-color: var(--field-hover-border);
+    }
+  }
+
+  &.mat-focused .mat-mdc-text-field-wrapper {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+
+  &.mat-form-field-invalid .mat-mdc-text-field-wrapper {
+    border-color: var(--danger);
+  }
+
+  /* 3) Stack label + infix vertically. Icons stay in their normal
+        flex slots — we make the rest grow with a min-width: 0 guard. */
+  .mat-mdc-form-field-flex {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    padding: 5px 10px 4px !important;
+    gap: 8px;
+  }
+
+  /* The label + infix column lives inside the flex without a dedicated
+     wrapper because of `display: contents` above. We achieve the column
+     using `flex-wrap: wrap` and assigning the label `flex-basis: 100%`
+     so it always sits on its own row. */
+  .mat-mdc-form-field-flex {
+    flex-wrap: wrap;
+  }
+
+  /* 4) Floating label — now a static block at the top. */
+  .mdc-floating-label,
+  .mdc-floating-label--float-above {
+    position: static !important;
+    transform: none !important;
+    transform-origin: left top !important;
+    width: auto !important;
+    max-width: 100% !important;
+    flex: 0 0 100%;
+    order: -1;
+    font-size: 11px !important;
+    font-weight: 500;
+    line-height: 1.25 !important;
+    color: var(--text-muted) !important;
+    letter-spacing: 0.01em;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 0 1px;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.mat-focused .mdc-floating-label,
+  &.mat-focused .mdc-floating-label--float-above {
+    color: var(--text) !important;
+  }
+
+  /* 5) The actual input row. */
+  .mat-mdc-form-field-infix {
+    /* Basis 0, not auto: with `auto` the input's intrinsic width makes the
+       infix wrap below a prefix/suffix icon and the field grows a third row. */
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 24px !important;
+    padding: 0 !important;
+    border-top: 0 !important;
+    width: auto !important;
+  }
+
+  /* Native input/select text */
+  .mat-mdc-input-element,
+  .mat-mdc-select-value-text {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .mat-mdc-input-element::placeholder {
+    color: var(--text-faint);
+  }
+
+  .mat-mdc-select-trigger {
+    height: 22px;
+    align-items: center;
+  }
+
+  .mat-mdc-select-arrow {
+    width: 8px;
+    height: 8px;
+    color: var(--text-muted);
+  }
+
+  /* prefix/suffix icons — vertically aligned with the input row. */
+  .mat-mdc-form-field-icon-suffix,
+  .mat-mdc-form-field-icon-prefix {
+    color: var(--text-muted);
+    align-self: flex-end;
+    padding-bottom: 3px;
+
+    .mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    /* An icon button (generate password…) at icon size, not 48×48. */
+    .mat-mdc-icon-button {
+      --mdc-icon-button-state-layer-size: 24px;
+      --mat-icon-button-state-layer-size: 24px;
+      width: 24px;
+      height: 24px;
+      padding: 3px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .mat-mdc-form-field-subscript-wrapper {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 2px 4px 0;
+  }
+
+  /* Textareas need a tad more breathing room. */
+  textarea.mat-mdc-input-element {
+    padding: 2px 0;
+    line-height: 1.4;
+  }
+}
+
+/* Autocomplete panel — follow theme surface */
+.mat-mdc-autocomplete-panel {
+  background: var(--surface) !important;
+  box-shadow: 0 0 0 1px var(--divider-strong) !important;
+
+  .mat-mdc-option .mdc-list-item__primary-text {
+    color: var(--text);
+  }
+  .mat-mdc-option:hover:not(.mdc-list-item--selected) {
+    background: var(--hover) !important;
+  }
+  .mat-mdc-option.mdc-list-item--selected {
+    background: var(--accent-soft) !important;
+  }
+}
+
+/* Select panel itself */
+.mat-mdc-select-panel {
+  border-radius: 0 !important;
+  padding: 4px !important;
+  /* Don't be clamped to the trigger width — sized by content (see MAT_SELECT_CONFIG). */
+  min-width: 100% !important;
+  max-width: min(420px, 90vw) !important;
+  background: var(--surface) !important;
+  box-shadow: 0 0 0 1px var(--divider-strong) !important;
+
+  .mat-mdc-option {
+    min-height: 30px !important;
+    font-size: 13px !important;
+    padding: 0 10px !important;
+    margin-bottom: 2px;
+    border-radius: 0;
+    transition: background-color 100ms ease;
+  }
+
+  .mat-mdc-option:last-of-type {
+    margin-bottom: 0;
+  }
+
+  /* Subtle zebra to separate adjacent rows. */
+  .mat-mdc-option:nth-of-type(even):not(.mdc-list-item--selected):not(:hover) {
+    background: var(--option-zebra);
+  }
+
+  .mat-mdc-option:hover:not(.mdc-list-item--selected) {
+    background: var(--hover) !important;
+  }
+
+  .mat-mdc-option.mdc-list-item--selected {
+    background: var(--accent-soft) !important;
+    color: var(--accent);
+  }
+
+  .mat-mdc-option .mdc-list-item__primary-text {
+    color: var(--text);
+  }
+
+  /* Multi-select checkbox: smaller and tighter. */
+  .mat-pseudo-checkbox {
+    width: 16px !important;
+    height: 16px !important;
+    margin-right: 8px !important;
+  }
+}
+
+/* ============================================================
+   Table — dense, Keitaro-style
+   ============================================================ */
+.mat-mdc-table {
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+
+  .mat-mdc-header-row {
+    background-color: var(--surface-2);
+    min-height: 32px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .mat-mdc-header-cell {
+    color: var(--text-muted);
+    font-size: 11.5px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 6px 12px;
+    border-bottom: none;
+  }
+
+  .mat-mdc-row {
+    min-height: 30px;
+    transition: background-color 100ms ease;
+
+    &:hover {
+      background-color: var(--hover);
+    }
+  }
+
+  .mat-mdc-cell {
+    color: var(--text);
+    font-size: 12.5px;
+    line-height: 1.35;
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .mat-mdc-row:last-of-type .mat-mdc-cell {
+    border-bottom: none;
+  }
+
+  .mat-mdc-header-cell:first-of-type,
+  .mat-mdc-cell:first-of-type {
+    padding-left: 16px;
+  }
+  .mat-mdc-header-cell:last-of-type,
+  .mat-mdc-cell:last-of-type {
+    padding-right: 8px;
+  }
+
+  .mat-mdc-cell .mat-mdc-icon-button {
+    width: 26px;
+    height: 26px;
+    padding: 2px;
+    --mdc-icon-button-state-layer-size: 26px;
+
+    .mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+/* Paginator — slim, neutral */
+.mat-mdc-paginator {
+  background: var(--surface-2);
+  border-top: 1px solid var(--divider);
+  font-variant-numeric: tabular-nums;
+
+  .mat-mdc-paginator-container {
+    min-height: 40px;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 0 12px;
+  }
+}
+
+/* ============================================================
+   Menu — slightly more compact + flat
+   ============================================================ */
+.mat-mdc-menu-panel {
+  background: var(--surface) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 0 0 1px var(--divider-strong) !important;
+  min-width: 180px !important;
+
+  .mat-mdc-menu-item .mdc-list-item__primary-text {
+    color: var(--text);
+  }
+
+  .mat-mdc-menu-item {
+    min-height: 36px !important;
+    font-size: 13px !important;
+
+    .mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+  }
+}
+
+/* ============================================================
+   "Make variable" popup (networks template editor)
+   ============================================================ */
+.cl-var-menu {
+  overflow: hidden !important;
+
+  .mat-mdc-menu-content {
+    padding: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .var-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px 16px;
+    width: 300px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .var-form-title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .var-hint {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
+
+    code {
+      font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+      font-size: 10.5px;
+      background: var(--code-bg);
+      padding: 1px 4px;
+      border-radius: 0;
+      white-space: nowrap;
+    }
+  }
+
+  .var-selected {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: var(--hover);
+    border-radius: 0;
+    font-size: 11.5px;
+
+    .var-selected-label {
+      color: var(--text-muted);
+    }
+
+    code {
+      font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+      font-size: 11px;
+      color: var(--code-text);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+  }
+
+  .var-level {
+    .mat-button-toggle-group {
+      width: 100%;
+    }
+    .mat-button-toggle {
+      flex: 1 1 0;
+      min-width: 0;
+      font-size: 12px;
+    }
+  }
+
+  mat-form-field.full {
+    width: 100%;
+  }
+
+  .var-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--warn);
+
+    .mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+  }
+
+  .var-submit {
+    margin-top: 2px;
+  }
+}
+
+/* ============================================================
+   Sidenav — flat, no shadow
+   ============================================================ */
+.mat-drawer {
+  background: var(--surface-2) !important;
+  border-right: 1px solid var(--divider) !important;
+  box-shadow: none !important;
+}
+
+.mat-drawer-container,
+.mat-sidenav-container {
+  background: var(--bg) !important;
+  color: var(--text);
+}
+
+.mat-drawer-content,
+.mat-sidenav-content {
+  background: var(--bg) !important;
+  color: var(--text);
+}
+
+/* ============================================================
+   Snackbar — round, neutral
+   ============================================================ */
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: var(--snackbar-bg);
+  --mat-snack-bar-button-color: var(--accent);
+  --mdc-snackbar-supporting-text-color: var(--snackbar-text);
+
+  .mdc-snackbar__surface {
+    border-radius: 0 !important;
+  }
+}
+
+/* Progress bar slimmer */
+.mat-mdc-progress-bar {
+  --mdc-linear-progress-track-height: 2px;
+  --mdc-linear-progress-active-indicator-height: 2px;
+  --mdc-linear-progress-active-indicator-color: var(--accent);
+}
+
+/* ============================================================
+   Dialogs — surface + text follow the theme
+   ============================================================ */
+.mat-mdc-dialog-surface,
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  background-color: var(--surface) !important;
+  color: var(--text);
+}
+.mat-mdc-dialog-container {
+  --mdc-dialog-container-color: var(--surface);
+  --mdc-dialog-subhead-color: var(--text);
+  --mdc-dialog-supporting-text-color: var(--text-muted);
+  color: var(--text);
+}
+
+/* Card body text colour */
+.mat-mdc-card {
+  color: var(--text);
+}
+
+/* Spinner uses the accent */
+.mat-mdc-progress-spinner {
+  --mdc-circular-progress-active-indicator-color: var(--accent);
+}
+
+/* ============================================================
+   Button toggle groups (view switch, level picker)
+   ============================================================ */
+.mat-button-toggle-group {
+  --mat-standard-button-toggle-background-color: var(--surface);
+  --mat-standard-button-toggle-text-color: var(--text-muted);
+  --mat-standard-button-toggle-selected-state-background-color: var(--accent-soft);
+  --mat-standard-button-toggle-selected-state-text-color: var(--accent);
+  --mat-standard-button-toggle-divider-color: var(--divider-strong);
+  border-color: var(--divider-strong) !important;
+}
+
+/* ============================================================
+   Checkbox / radio / slide accents
+   ============================================================ */
+.mat-mdc-checkbox.mat-accent,
+.mat-mdc-checkbox.mat-primary {
+  --mdc-checkbox-selected-icon-color: var(--accent);
+  --mdc-checkbox-selected-hover-icon-color: var(--accent-hover);
+  --mdc-checkbox-selected-focus-icon-color: var(--accent);
+  --mdc-checkbox-selected-checkmark-color: var(--accent-contrast);
+}
+
+.mat-mdc-slide-toggle {
+  --mdc-switch-selected-track-color: var(--accent);
+  --mdc-switch-selected-handle-color: var(--accent-contrast);
+  --mdc-switch-selected-hover-track-color: var(--accent-hover);
+  --mdc-switch-selected-focus-track-color: var(--accent);
+  --mdc-switch-selected-pressed-track-color: var(--accent-hover);
+}
+
+/* Links default to the accent */
+a:not(.mat-mdc-button-base):not(.mat-mdc-list-item) {
+  color: var(--accent);
+}
+
+/* Inputs: keep caret/selection on-theme */
+.mat-mdc-form-field.mat-focused {
+  --mdc-filled-text-field-caret-color: var(--accent);
+}
+input,
+textarea {
+  caret-color: var(--accent);
+}
+
+/* ============================================================
+   Chart tokens — validated with the dataviz palette checks
+   (lightness band, chroma floor, CVD separation, contrast) against
+   each theme's surface. Series 1 = all plays, series 2 = viewers
+   who submitted the order form. Not the brand burgundy itself:
+   #611F2A is a plane colour and too dark to read as a 2px line.
+   ============================================================ */
+:root {
+  --chart-1: #8c3040;
+  --chart-2: #2a64b0;
+  --chart-grid: #ddd6c8;
+  --chart-marker: #6e675c;
+}
+:root.dark {
+  --chart-1: #d0697a;
+  --chart-2: #5b8fd6;
+  --chart-grid: #2a2a2e;
+  --chart-marker: #b9b0a3;
+}
+
+/* ============================================================
+   База знаний — a document's body, read view and editor alike
+   (the HTML comes from the server, so these can't be component-scoped)
+   ============================================================ */
+.kb-content {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text);
+  overflow-wrap: anywhere;
+
+  &.ProseMirror,
+  .ProseMirror {
+    outline: none;
+  }
+  > :first-child {
+    margin-top: 0;
+  }
+  p {
+    margin: 0 0 12px;
+  }
+  h2 {
+    margin: 28px 0 10px;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  h3 {
+    margin: 22px 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  ul,
+  ol {
+    margin: 0 0 12px;
+    padding-left: 24px;
+  }
+  li > p {
+    margin: 0 0 4px;
+  }
+  blockquote {
+    margin: 0 0 14px;
+    padding: 10px 16px;
+    border-left: 3px solid var(--accent-border);
+    background: var(--accent-soft);
+    border-radius: 0 8px 8px 0;
+    p:last-child {
+      margin-bottom: 0;
+    }
+  }
+  a {
+    color: var(--accent-text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  hr {
+    margin: 20px 0;
+    border: 0;
+    border-top: 1px solid var(--divider);
+  }
+  img,
+  video {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    margin: 6px 0 16px;
+    border-radius: 8px;
+  }
+  video {
+    width: 100%;
+    background: #000;
+  }
+  img.ProseMirror-selectednode,
+  video.ProseMirror-selectednode {
+    outline: 2px solid var(--accent-border);
+  }
+}

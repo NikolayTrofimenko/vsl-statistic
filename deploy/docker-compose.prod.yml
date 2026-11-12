@@ -1,0 +1,68 @@
+# vsl-statistic on the shared server (38.180.160.192).
+#
+# Lives next to craft-lander and spendbridge and must not get in their way:
+#   - its own compose project and data volume;
+#   - no host ports at all: TLS and the domain are served by the shared Caddy
+#     (`edge` project, ~/edge), which reaches us as `vsl-statistic:4310` over
+#     the external `edge` network;
+#   - memory/CPU ceilings, so a fault here — or a long transcription backlog —
+#     can't starve the neighbours;
+#   - speech-to-text runs in its own `whisper` container, reachable only from
+#     the app over this project's private network;
+#   - craft-lander's data volume mounted read-only, only to read the names of
+#     its videos (videos.json) and label landing streams with them.
+#
+#   docker compose -p vsl-statistic -f deploy/docker-compose.prod.yml up -d --build
+
+name: vsl-statistic
+
+services:
+  vsl-statistic:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      VSL_STAT_DATA: /data
+      CRAFT_VIDEOS_FILE: /craft-data/videos.json
+      WHISPER_URL: http://whisper:9000
+    expose:
+      - '4310'
+    volumes:
+      - vsl-statistic-data:/data
+      - craft-lander-data:/craft-data:ro
+    networks:
+      - edge
+      - internal
+    mem_limit: 512m
+    depends_on:
+      - whisper
+
+  whisper:
+    build:
+      context: ../whisper
+    restart: unless-stopped
+    environment:
+      # small: good multilingual accuracy at a CPU cost the box can carry.
+      WHISPER_MODEL: small
+      WHISPER_THREADS: '2'
+    volumes:
+      - whisper-models:/models
+    networks:
+      - internal
+    # Half the server's 4 cores at most: craft-lander shares the machine.
+    cpus: 2
+    mem_limit: 2g
+
+networks:
+  edge:
+    external: true
+  internal:
+
+volumes:
+  vsl-statistic-data:
+  whisper-models:
+  craft-lander-data:
+    external: true
+    name: deploy_craft-lander-data

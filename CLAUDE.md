@@ -1,0 +1,32 @@
+# vsl-statistic — context for Claude Code
+
+Reply in Russian. Keep sessions short and task-scoped; don't re-verify what isn't touched.
+
+## What it is
+Internal tool of the EUPHORIA CPA team, live at https://trueeuphoriaanalytics.online.
+- **Библиотека крео** (`/library`): videos from a Google Drive folder, synced every 30 min. Sidebar = verticals (top-level folders, `verticals` table keyed by Drive folder id) → flat list. Per creative: permanent ID `<code>-<NNNN>` (`server/creo/ids.ts`, issued once, never changes; admin edits codes on `/verticals`, affects new IDs only), Drive date, geo (from file-name prefix `MX_…` or set manually), spoken language + transcript (local whisper) + Russian translation (Claude Haiku), per-user tags (`server/creo/tags.ts`, visibility by role), upload into Drive through us (`uploaded_by`), "new for period" highlighting, geo/language/tag filters, "Это повтор" marks (`server/creo/duplicates.ts`; own marks visible, admin sees all and clears), admin delete = Drive trash + `deleted_at` (row kept so the ID is never reissued; sync never resurrects it).
+- **История загрузок** (`/history`, admin only): month × vertical summary + additions list (source service/Drive, who uploaded, deletions) — `server/creo/history.ts`. Old manual groups (`video_groups`, `group_id`) are dead columns — not in UI/API.
+- **Капы** (`/caps`, admin): daily leads per partner cap from Keitaro (`server/caps/`), MSK day, all statuses; cap = rule (partner + geo + name words, new offers join) or fixed offers; Telegram alerts (`server/caps/alerts.ts`, `server/notify/telegram.ts`).
+- **Домены** (`/domains`, admin, `server/domains/`): registry replacing Илья's Google Sheet — Namecheap (expiry, renew, buy; API only from the server IP), Cloudflare (zones, proxied A records to Keitaro IP), Keitaro (subdomains = source of truth for "issued", group = buyer) + our `domain_roots` (owner, team, shared pixel, service, ban, renew call) and `domain_sub_bans`. 30 standard subdomain names in `src/shared/domains.ts`. Paid actions go to `domain_actions`.
+- **Доступы** (`/grants`, `server/grants/`): Keitaro users' offer/landing access (`access_data`: `*_selected_groups` / `*_selected_entities`) — who holds which group/offer, "Пошарить" (one or many picked targets, tri-state buyer ticks: half-ticked = untouched) — one share = per user: read whole access → change the lists → one PUT `/users/{id}/access` → re-read to verify; writes serialized; log rows share `batch_id`, offer group can take its landing group along. Teams (`grant_teams`, members = Keitaro logins, lead = our account) and `grant_log`. Head of buying = section `grants` (or admin): all teams, anyone; role `teamlead` opens it without the section but shares only to teams they lead (`grants:*` channels are handler-checked).
+- **Дашборд** (`/dashboard`, admin only = the owner for now; `dashboard:*` channels admin-only): Илья's company metrics in blocks (`server/dashboard/`, types `src/shared/dashboard.types.ts`), week (Mon–Sun MSK) / month + 8/6 periods of history, drill-down per tile; unconnected metrics shown as "источник не подключён". Hiring and links from Kaiten (`server/kaiten/`: euphoria.kaiten.ru, `KAITEN_TOKEN`; cards of the hiring space boards Рекрутинг → Испытательный срок → Сотрудники and «Связки общий поток» + their location history (deleted select values — e.g. the old buyer list — fetched one by one) copied every 30 min into `kaiten_cards`/`kaiten_moves`; board/column/property ids hard-coded in `server/dashboard/index.ts`). "Вышел на ИС" = date property «Испытательный срок» or first entry to the probation board; "прошёл" = subcolumn «ИС пройден». Buying tab (`server/dashboard/links.ts`): profit from Keitaro (sale_revenue − cost) + links tested (first verdict column) / started scaling (first МАСШТАБИРУЮ) / scaling now, and a per-buyer table joining Keitaro campaign_group with the Kaiten «Байер» property.
+- **Качество на лендах** (`/quality`, admin only — `stats:*` in `adminOnly()`; tracker endpoints stay public): watch-time analytics from `tracker/t.js` on landings (watched-seconds bitmap, retention, popup reach, leads). Grouped by video / by landing. Video names come from craft-lander's `videos.json` (matched by `master.m3u8` URL).
+
+## Stack and layout
+Angular 20 + Material + Tailwind (`src/app`), Express 5 + TS (`server/`, built with `tsc`), SQLite via built-in `node:sqlite` (`server/db/index.ts`, append-only migrations). Contract between both sides: `src/shared/api.types.ts`; RPC channels in `server/api/*.handlers.ts`. Copied conventions from `D:\work\cpa\craft-lander`.
+- `server/drive/` Google OAuth (full `drive` scope) + sync; `server/http/upload.ts` resumable upload to Drive
+- `server/creo/` transcription queue (`transcribe.ts`) and translation (`translate.ts`, model via `TRANSLATE_MODEL`, default `claude-haiku-4-5` — keep it cheap)
+- `whisper/` faster-whisper sidecar (pinned `av<14` + `requests`, see Dockerfile)
+- `server/stats/` collector + reports; `server/craft/` craft-lander catalog
+- Accounts (`server/users/`): roles `buyer | teamlead | admin`, created by the admin on `/users`; first admin from `VSL_STAT_ADMIN_LOGIN/_PASSWORD` (fallback: legacy `VSL_STAT_PASSWORD`). Base role decides tag visibility; **access roles** (`access_roles`, admin-made on `/users`) decide sections — `src/shared/access.ts` (library, caps, domains, quality, history, grants; no access role = library only, admin = all). Server check: `channelAccess()` in `server/http/app.ts` (channel prefix → section, `ADMIN_CHANNELS` + `users:*` never grantable); client: `api.can(section)`, route guard `section()`. RPC handlers get the caller via `currentUser()`.
+
+## Build, deploy
+- `npm run build` (renderer + server). Dev: `npm run dev` (Angular :4200 → API :4310).
+- Deploy: `SSH_KEY=$HOME/.ssh/madamcoco_deploy bash deploy/push-source.sh` → server `craft@38.180.160.192:~/vsl-statistic`, compose project `vsl-statistic` (app + whisper). TLS/domains: shared Caddy in `~/edge` (local `D:\work\cpa\edge`), docker network `edge`.
+- Server `.env` holds secrets (passwords, Google OAuth, `ANTHROPIC_API_KEY`) — never print it.
+
+## Gotchas
+- Git Bash rewrites `/path` args to Windows paths: use `MSYS_NO_PATHCONV=1` for scripts taking URL paths.
+- ssh may not find `known_hosts` (Cyrillic user name): pass `-o UserKnownHostsFile=$HOME/.ssh/known_hosts`.
+- Shell heredocs with mixed quotes break: write patch scripts with the Write tool.
+- `example-land/` is gitignored (partner API token in `order.php`).
