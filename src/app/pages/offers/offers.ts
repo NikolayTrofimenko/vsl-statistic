@@ -232,7 +232,8 @@ export class OffersPage implements OnInit {
   readonly country = countryName;
   readonly pay = money;
 
-  readonly verticals = computed(() => uniq(this.offers().map((o) => o.vertical)));
+  /** Library verticals plus whatever offers already carry — the filter and the form share it. */
+  readonly verticals = computed(() => uniq([...this.libraryVerticals(), ...this.offers().map((o) => o.vertical)]));
   readonly geos = computed(() => uniq(this.offers().map((o) => o.geo)));
   readonly offCount = computed(() => this.offers().filter((o) => !o.active).length);
 
@@ -249,12 +250,12 @@ export class OffersPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.reload();
+    try {
+      this.libraryVerticals.set((await this.api.library.verticals()).map((v) => v.name).filter(Boolean));
+    } catch {
+      /* no library access: the filter falls back to the offers' own verticals */
+    }
     if (this.canEdit()) {
-      try {
-        this.libraryVerticals.set((await this.api.library.verticals()).map((v) => v.name).filter(Boolean));
-      } catch {
-        /* suggestions only */
-      }
       this.api.offers.partners().then(
         (p) => this.keitaroPartners.set(p),
         () => undefined,
@@ -285,7 +286,7 @@ export class OffersPage implements OnInit {
   async edit(offer?: Offer): Promise<void> {
     const data: OfferEditData = {
       offer,
-      verticals: uniq([...this.libraryVerticals(), ...this.verticals()]),
+      verticals: this.verticals(),
       partners: uniq([...this.keitaroPartners(), ...this.offers().map((o) => o.partner)]),
     };
     const ref = this.dialog.open<OfferEditDialog, OfferEditData, Offer | 'deleted'>(OfferEditDialog, {
