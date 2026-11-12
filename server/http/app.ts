@@ -153,6 +153,7 @@ const ADMIN_CHANNELS = new Set([
 const EDIT_CHANNELS: Record<string, Section> = {
   'offers:save': 'offersEdit',
   'offers:delete': 'offersEdit',
+  'offers:partners': 'offersEdit',
 };
 
 /** Reference data several sections show (vertical names and codes). */

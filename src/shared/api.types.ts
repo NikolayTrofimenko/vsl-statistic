@@ -942,6 +942,8 @@ export interface VslStatApi {
     list(): Promise<Offer[]>;
     save(input: OfferInput): Promise<Offer>;
     delete(id: number): Promise<void>;
+    /** ПП names from Keitaro (affiliate networks), for the form. */
+    partners(): Promise<string[]>;
     /** Replace the offer's photo (png, jpg, webp up to 10 MB). */
     uploadPhoto(id: number, file: File): Promise<Offer>;
   };

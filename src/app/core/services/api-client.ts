@@ -207,6 +207,7 @@ export function createHttpApi(options: HttpApiOptions = {}): VslStatApi {
       list: () => rpc('offers:list'),
       save: (input) => rpc('offers:save', input),
       delete: (id) => rpc('offers:delete', id),
+      partners: () => rpc('offers:partners'),
       uploadPhoto: (id, file) => uploadOfferPhoto(id, file),
     },
 

@@ -91,6 +91,14 @@ export async function listOffers(fresh = false): Promise<KeitaroOffer[]> {
   return out;
 }
 
+/** Partner programs (affiliate networks) by name, for picking the ПП on an offer card. */
+export async function listNetworkNames(): Promise<string[]> {
+  const nets = await call<{ name: string; state?: string }[]>('/admin_api/v1/affiliate_networks');
+  return [...new Set(nets.filter((n) => n.state !== 'deleted').map((n) => String(n.name).trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'ru'),
+  );
+}
+
 /* ------------------------- report ------------------------- */
 
 /** offer id → leads per hour (0–23) of `date` in `timezone`, every status counted. */

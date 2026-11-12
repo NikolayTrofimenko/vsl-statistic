@@ -192,7 +192,7 @@ export interface OfferEditData {
           </label>
           <label>
             <span>ПП (партнёрка)</span>
-            <input [(ngModel)]="f.partner" maxlength="80" list="offer-partners" />
+            <input [(ngModel)]="f.partner" maxlength="80" list="offer-partners" placeholder="Выбери из Keitaro или впиши" />
             <datalist id="offer-partners">
               @for (p of data.partners; track p) {
                 <option [value]="p"></option>

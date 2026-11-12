@@ -226,6 +226,8 @@ export class OffersPage implements OnInit {
   readonly showOff = signal(false);
   /** Library verticals, offered as suggestions in the form. */
   private readonly libraryVerticals = signal<string[]>([]);
+  /** ПП from Keitaro, offered in the form. */
+  private readonly keitaroPartners = signal<string[]>([]);
 
   readonly country = countryName;
   readonly pay = money;
@@ -253,6 +255,10 @@ export class OffersPage implements OnInit {
       } catch {
         /* suggestions only */
       }
+      this.api.offers.partners().then(
+        (p) => this.keitaroPartners.set(p),
+        () => undefined,
+      );
     }
   }
 
@@ -280,7 +286,7 @@ export class OffersPage implements OnInit {
     const data: OfferEditData = {
       offer,
       verticals: uniq([...this.libraryVerticals(), ...this.verticals()]),
-      partners: uniq(this.offers().map((o) => o.partner)),
+      partners: uniq([...this.keitaroPartners(), ...this.offers().map((o) => o.partner)]),
     };
     const ref = this.dialog.open<OfferEditDialog, OfferEditData, Offer | 'deleted'>(OfferEditDialog, {
       data,
