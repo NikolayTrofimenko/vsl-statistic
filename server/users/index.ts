@@ -214,7 +214,9 @@ export function saveAccessRole(input: AccessRoleInput): AccessRole {
   const name = String(input.name ?? '').trim().replace(/\s+/g, ' ').slice(0, 40);
   if (!name) throw new Error('Название роли пустое.');
   // Kept in menu order, unknown ids dropped.
-  const sections = SECTIONS.map((s) => s.id).filter((id) => (input.sections ?? []).includes(id));
+  const picked = new Set(input.sections ?? []);
+  if (picked.has('offersEdit')) picked.add('offers'); // editing offers means seeing them
+  const sections = SECTIONS.map((s) => s.id).filter((id) => picked.has(id));
   const conn = db();
   // Compared here, not by SQL: NOCASE folds only ASCII, and role names are Russian.
   const clash = (conn.prepare('SELECT id, name FROM access_roles').all() as { id: number; name: string }[]).some(

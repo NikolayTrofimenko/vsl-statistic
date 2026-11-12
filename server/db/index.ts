@@ -465,6 +465,9 @@ const MIGRATIONS: Migration[] = [
 
   /* 25 — База знаний as documents: rich text with images and videos (files on Drive in kb_files) */
   knowledgeDocs,
+
+  /* 26 — Офферы: hand-kept offer cards; buyers' roles see them, tech specialist and biz-dev edit */
+  offersSection,
 ];
 
 /**
@@ -550,6 +553,58 @@ function knowledgeDocs(conn: DatabaseSync): void {
       html += `<video src="/api/knowledge/file/${esc(it.drive_file_id)}" controls="true" preload="metadata"></video>`;
     }
     conn.prepare(`UPDATE kb_items SET kind = 'doc', body = ?, description = '', url = NULL WHERE id = ?`).run(html || '<p></p>', it.id);
+  }
+}
+
+/**
+ * The offers registry, and who gets it right away: roles that buy see it
+ * (Баер, Тимлид, Хед баинга), the tech specialist and biz-dev edit it.
+ * Matched by role name; other roles are left for the admin to tick.
+ */
+function offersSection(conn: DatabaseSync): void {
+  conn.exec(`
+    CREATE TABLE offers (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      name              TEXT NOT NULL,
+      vertical          TEXT NOT NULL DEFAULT '',
+      geo               TEXT NOT NULL DEFAULT '',
+      partner           TEXT NOT NULL DEFAULT '',
+      cap               INTEGER,
+      payout            REAL,
+      payout_currency   TEXT NOT NULL DEFAULT 'USD',
+      land_price        TEXT NOT NULL DEFAULT '',
+      guarantee         REAL,
+      brief             TEXT NOT NULL DEFAULT '',
+      cc_mode           TEXT NOT NULL DEFAULT '',
+      cc_language       TEXT NOT NULL DEFAULT '',
+      region_exclusions TEXT NOT NULL DEFAULT '',
+      photo             TEXT,
+      active            INTEGER NOT NULL DEFAULT 1,
+      created_by        INTEGER,
+      created_at        INTEGER NOT NULL,
+      updated_by        INTEGER,
+      updated_at        INTEGER NOT NULL
+    );
+  `);
+  const grant: Record<string, string[]> = {
+    'баер': ['offers'],
+    'тимлид': ['offers'],
+    'хед баинга': ['offers'],
+    'тех специалист': ['offers', 'offersEdit'],
+    'биздев': ['offers', 'offersEdit'],
+  };
+  const roles = conn.prepare('SELECT id, name, sections FROM access_roles').all() as { id: number; name: string; sections: string }[];
+  for (const r of roles) {
+    const add = grant[r.name.trim().toLocaleLowerCase('ru')];
+    if (!add) continue;
+    let list: string[] = [];
+    try {
+      list = JSON.parse(r.sections) as string[];
+    } catch {
+      /* broken list — start over */
+    }
+    const next = [...new Set([...list, ...add])];
+    conn.prepare('UPDATE access_roles SET sections = ? WHERE id = ?').run(JSON.stringify(next), r.id);
   }
 }
 

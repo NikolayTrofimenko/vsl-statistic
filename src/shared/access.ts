@@ -12,6 +12,9 @@ export const SECTIONS: { id: Section; label: string; path: string }[] = [
   { id: 'quality', label: 'Качество на лендах', path: '/quality' },
   { id: 'history', label: 'История загрузок', path: '/history' },
   { id: 'grants', label: 'Доступы в Keitaro (все команды)', path: '/grants' },
+  { id: 'offers', label: 'Офферы', path: '/offers' },
+  // Same page; the role may also add and change offers (implies 'offers').
+  { id: 'offersEdit', label: 'Офферы: правка', path: '/offers' },
 ];
 
 /** What an account without an access role sees — the same as before roles existed. */

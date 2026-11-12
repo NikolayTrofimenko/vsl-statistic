@@ -68,6 +68,7 @@ export class ApiService {
   readonly reports = this.api.reports;
   readonly history = this.api.history;
   readonly knowledge = this.api.knowledge;
+  readonly offers = this.api.offers;
   readonly caps = this.api.caps;
   readonly domains = this.api.domains;
   readonly grants = this.api.grants;

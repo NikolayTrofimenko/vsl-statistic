@@ -5,6 +5,7 @@ import { registerDriveHandlers } from './drive.handlers';
 import { registerGrantsHandlers } from './grants.handlers';
 import { registerKnowledgeHandlers } from './knowledge.handlers';
 import { registerLibraryHandlers } from './library.handlers';
+import { registerOffersHandlers } from './offers.handlers';
 import { registerStatsHandlers } from './stats.handlers';
 import { registerUsersHandlers } from './users.handlers';
 
@@ -16,6 +17,7 @@ export function registerApiHandlers(): void {
   registerGrantsHandlers();
   registerKnowledgeHandlers();
   registerLibraryHandlers();
+  registerOffersHandlers();
   registerStatsHandlers();
   registerUsersHandlers();
 }

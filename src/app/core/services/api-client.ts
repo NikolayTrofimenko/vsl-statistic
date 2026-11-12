@@ -1,4 +1,4 @@
-import type { AuthState, KbFile, SessionUser, UploadInput, VslStatApi } from '../../../shared/api.types';
+import type { AuthState, KbFile, Offer, SessionUser, UploadInput, VslStatApi } from '../../../shared/api.types';
 
 /**
  * HTTP implementation of the `VslStatApi` contract.
@@ -85,6 +85,19 @@ export function createHttpApi(options: HttpApiOptions = {}): VslStatApi {
       xhr.onerror = () => reject(new ApiError('Сервер недоступен.', 0));
       xhr.send(input.file);
     });
+  }
+
+  async function uploadOfferPhoto(id: number, file: File): Promise<Offer> {
+    const res = await fetch(`/api/offers/photo/${id}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+    });
+    if (res.status === 401) options.onUnauthorized?.();
+    const payload = (await res.json().catch(() => null)) as { ok?: boolean; data?: Offer; error?: string } | null;
+    if (!res.ok || !payload?.ok || !payload.data) throw new ApiError(payload?.error ?? `Фото не загрузилось (${res.status})`, res.status);
+    return payload.data;
   }
 
   /** An image or video for a knowledge-base document — the same raw-body upload. */
@@ -188,6 +201,13 @@ export function createHttpApi(options: HttpApiOptions = {}): VslStatApi {
 
     history: {
       list: () => rpc('history:list'),
+    },
+
+    offers: {
+      list: () => rpc('offers:list'),
+      save: (input) => rpc('offers:save', input),
+      delete: (id) => rpc('offers:delete', id),
+      uploadPhoto: (id, file) => uploadOfferPhoto(id, file),
     },
 
     knowledge: {

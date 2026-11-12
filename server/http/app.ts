@@ -9,6 +9,7 @@ import { canAccess, runAs } from '../users';
 import type { Section } from '../../src/shared/api.types';
 import { oauthCallback, oauthStart, serveKnowledgeFile, serveThumb, streamVideo } from './drive-routes';
 import { uploadKnowledge } from '../knowledge';
+import { MAX_PHOTO, serveOfferPhoto, uploadOfferPhoto } from '../offers';
 import { collect, collectCors } from '../stats/collect';
 import { uploadCreative } from './upload';
 import { publicApiRouter } from './public-api';
@@ -68,6 +69,13 @@ export function createApp(): express.Express {
   // База знаний: everyone reads, the admin uploads images and videos for documents.
   app.get('/api/knowledge/file/:id', requireAuth, serveKnowledgeFile);
   app.post('/api/knowledge/upload', requireAdmin, uploadKnowledge);
+  app.get('/api/offers/photo/:id', requireSection('offers'), serveOfferPhoto);
+  app.post(
+    '/api/offers/photo/:id',
+    requireSection('offersEdit'),
+    express.raw({ type: () => true, limit: MAX_PHOTO }),
+    uploadOfferPhoto,
+  );
 
   app.use('/api', (_req: Request, res: Response) => {
     res.status(404).json({ ok: false, error: 'Неизвестный эндпоинт.' });
@@ -121,6 +129,7 @@ function channelAccess(channel: string): Section | 'admin' | null {
   // The dashboard is the owner's for now; its blocks become sections once roles are split.
   if (ADMIN_CHANNELS.has(channel) || channel.startsWith('users:') || channel.startsWith('dashboard:')) return 'admin';
   if (OPEN_CHANNELS.has(channel)) return null;
+  if (EDIT_CHANNELS[channel]) return EDIT_CHANNELS[channel];
   const prefix = channel.slice(0, channel.indexOf(':'));
   if (HANDLER_CHECKED_PREFIXES.has(prefix)) return null;
   return SECTION_OF_PREFIX[prefix] ?? null;
@@ -139,6 +148,12 @@ const ADMIN_CHANNELS = new Set([
   'knowledge:delete',
 ]);
 
+/** Writes inside a section that only some of its readers may make. */
+const EDIT_CHANNELS: Record<string, Section> = {
+  'offers:save': 'offersEdit',
+  'offers:delete': 'offersEdit',
+};
+
 /** Reference data several sections show (vertical names and codes). */
 const OPEN_CHANNELS = new Set(['library:verticals', 'knowledge:list', 'knowledge:get']);
 
@@ -155,6 +170,7 @@ const SECTION_OF_PREFIX: Record<string, Section> = {
   caps: 'caps',
   domains: 'domains',
   history: 'history',
+  offers: 'offers',
 };
 
 /** Serve the built Angular bundle, falling back to index.html for deep links. */

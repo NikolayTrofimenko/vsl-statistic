@@ -40,6 +40,7 @@ export class App {
       { path: '/caps', icon: 'speed', label: 'Капы', show: this.api.can('caps') },
       { path: '/domains', icon: 'language', label: 'Домены', show: this.api.can('domains') },
       { path: '/grants', icon: 'key', label: 'Доступы', show: this.api.canGrants() },
+      { path: '/offers', icon: 'local_offer', label: 'Офферы', show: this.api.can('offers') },
       { path: '/knowledge', icon: 'school', label: 'База знаний', show: true },
     ].filter((item) => item.show),
   );

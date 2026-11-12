@@ -18,7 +18,7 @@ import type { DashDetail, DashPeriodKind, Dashboard } from './dashboard.types';
 export type UserRole = 'buyer' | 'teamlead' | 'admin';
 
 /** A part of the app an access role can open (see `src/shared/access.ts`). */
-export type Section = 'library' | 'caps' | 'domains' | 'quality' | 'history' | 'grants';
+export type Section = 'library' | 'caps' | 'domains' | 'quality' | 'history' | 'grants' | 'offers' | 'offersEdit';
 
 export interface SessionUser {
   id: number;
@@ -275,6 +275,38 @@ export interface UploadInput {
   name?: string;
   geo?: string | null;
 }
+
+/* ============================ Офферы ============================ */
+
+export interface Offer {
+  id: number;
+  name: string;
+  vertical: string;
+  /** Country code (MX, IN…) or ''. */
+  geo: string;
+  /** Партнёрка (ПП). */
+  partner: string;
+  /** Hand-set cap, leads a day. */
+  cap: number | null;
+  payout: number | null;
+  payoutCurrency: string;
+  /** Price on the landing, as written ("990 MXN"). */
+  landPrice: string;
+  /** Гарант: % of leads the partner pays for whatever the outcome. */
+  guarantee: number | null;
+  /** Бриф / состав. */
+  brief: string;
+  /** Режим КЦ (hours). */
+  ccMode: string;
+  ccLanguage: string;
+  regionExclusions: string;
+  photoUrl: string | null;
+  active: boolean;
+  updatedAt: number;
+  updatedBy: string | null;
+}
+
+export type OfferInput = Omit<Offer, 'id' | 'photoUrl' | 'updatedAt' | 'updatedBy'> & { id?: number };
 
 /* ============================ База знаний ============================ */
 
@@ -904,6 +936,14 @@ export interface VslStatApi {
     check(domains: string[]): Promise<DomainCheck[]>;
     /** Register on Namecheap, add to Cloudflare, point NS there. */
     buy(input: BuyInput): Promise<BuyResult>;
+  };
+  /** Section `offers` reads; `offersEdit` writes. */
+  offers: {
+    list(): Promise<Offer[]>;
+    save(input: OfferInput): Promise<Offer>;
+    delete(id: number): Promise<void>;
+    /** Replace the offer's photo (png, jpg, webp up to 10 MB). */
+    uploadPhoto(id: number, file: File): Promise<Offer>;
   };
   /** Everyone reads; the admin adds, edits and deletes. */
   knowledge: {

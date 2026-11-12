@@ -105,6 +105,12 @@ export const routes: Routes = [
     title: 'Вертикали',
   },
   {
+    path: 'offers',
+    canActivate: [section('offers')],
+    loadComponent: () => import('./pages/offers/offers').then((m) => m.OffersPage),
+    title: 'Офферы',
+  },
+  {
     path: 'knowledge',
     loadComponent: () => import('./pages/knowledge/knowledge').then((m) => m.KnowledgePage),
     title: 'База знаний',
