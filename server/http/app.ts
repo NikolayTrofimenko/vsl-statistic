@@ -147,6 +147,7 @@ const ADMIN_CHANNELS = new Set([
   'stats:revokeApiKey',
   'knowledge:save',
   'knowledge:delete',
+  'knowledge:import',
 ]);
 
 /** Writes inside a section that only some of its readers may make. */

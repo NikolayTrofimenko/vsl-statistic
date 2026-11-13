@@ -217,3 +217,84 @@ async function knowledgeFolder(): Promise<string> {
   log.info(`База знаний: создана папка на Drive ${id}.`);
   return id;
 }
+
+/* ------------------------------ files dropped into the Drive folder ------------------------------ */
+
+const IMPORT_EVERY_MS = 30 * 60 * 1000;
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+
+interface DriveEntry {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: string;
+  createdTime: string;
+}
+
+async function driveChildren(parent: string): Promise<DriveEntry[]> {
+  const out: DriveEntry[] = [];
+  let pageToken = '';
+  do {
+    const q = encodeURIComponent(`'${parent}' in parents and trashed = false`);
+    const r = await googleFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=1000` +
+        `&fields=nextPageToken,files(id,name,mimeType,size,createdTime)${pageToken ? `&pageToken=${pageToken}` : ''}`,
+    );
+    if (!r.ok) throw new Error(`Google Drive ответил ${r.status}`);
+    const j = (await r.json()) as { files: DriveEntry[]; nextPageToken?: string };
+    out.push(...j.files);
+    pageToken = j.nextPageToken ?? '';
+  } while (pageToken);
+  return out;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Files someone put straight into the knowledge folder on Drive become documents:
+ * a video is shown in the page, an image too, anything else (pdf, docx…) is a link
+ * that opens or downloads it. A subfolder's name is the section. Each Drive file is
+ * imported once (`kb_files`); deleting its document trashes it, so it never returns.
+ */
+export async function importFromDrive(): Promise<number> {
+  if (!googleConnected() || !getSetting(FOLDER_SETTING)) return 0;
+  const root = getSetting(FOLDER_SETTING)!;
+  const conn = db();
+  const known = new Set((conn.prepare('SELECT drive_file_id FROM kb_files').all() as { drive_file_id: string }[]).map((r) => r.drive_file_id));
+  const found: { file: DriveEntry; topic: string }[] = [];
+  for (const f of await driveChildren(root)) {
+    if (f.mimeType === FOLDER_MIME) {
+      for (const g of await driveChildren(f.id)) if (g.mimeType !== FOLDER_MIME) found.push({ file: g, topic: f.name });
+    } else found.push({ file: f, topic: '' });
+  }
+  let added = 0;
+  for (const { file, topic } of found) {
+    // Native Google Docs/Sheets can't be streamed as files; .DS_Store and the like are noise.
+    if (known.has(file.id) || file.mimeType.startsWith('application/vnd.google-apps') || file.name.startsWith('.')) continue;
+    const url = FILE_URL + file.id;
+    const name = escapeHtml(file.name);
+    const html = VIDEO_EXT.test(file.name)
+      ? `<video src="${url}"></video>`
+      : IMAGE_EXT.test(file.name)
+        ? `<p><img src="${url}" alt="${name}"></p>`
+        : `<p><a href="${url}">${/\.pdf$/i.test(file.name) ? 'Открыть' : 'Скачать'}: ${name}</a></p>`;
+    const at = Date.parse(file.createdTime) || Date.now();
+    conn
+      .prepare('INSERT OR REPLACE INTO kb_files (drive_file_id, name, mime, size, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(file.id, file.name, file.mimeType, Number(file.size ?? 0), null, at);
+    conn
+      .prepare(`INSERT INTO kb_items (kind, title, topic, body, created_by, created_at, updated_at) VALUES ('doc', ?, ?, ?, NULL, ?, ?)`)
+      .run(file.name.replace(/\.[^.]+$/, '').trim().slice(0, 200) || file.name, topic.slice(0, 80), clean(html), at, at);
+    added++;
+  }
+  if (added) log.info(`База знаний: с Диска добавлено ${added}.`);
+  return added;
+}
+
+export function startKnowledgeImport(): void {
+  const run = () => void importFromDrive().catch((err) => log.warn('База знаний: импорт с Диска упал', err));
+  setTimeout(run, 20_000);
+  setInterval(run, IMPORT_EVERY_MS).unref();
+}

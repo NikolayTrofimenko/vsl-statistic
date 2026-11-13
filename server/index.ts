@@ -2,6 +2,7 @@ import { registerApiHandlers } from './api';
 import { startCapAlerts } from './caps/alerts';
 import { startDomainsWarmup } from './domains';
 import { startKaitenSync } from './kaiten';
+import { startKnowledgeImport } from './knowledge';
 import { startAccessSnapshots } from './grants';
 import { dataRoot, publicUrl, serverHost, serverPort } from './config';
 import { db } from './db';
@@ -41,6 +42,7 @@ const server = app.listen(port, host, () => {
   startCapAlerts();
   startDomainsWarmup();
   startKaitenSync();
+  startKnowledgeImport();
   startAccessSnapshots();
 });
 
