@@ -20,8 +20,8 @@ export const SECTIONS: { id: Section; label: string; path: string }[] = [
   { id: 'knowledgeEdit', label: 'База знаний: правка', path: '/knowledge' },
 ];
 
-/** What an account without an access role sees — the same as before roles existed. */
-export const DEFAULT_SECTIONS: Section[] = ['library', 'knowledge'];
+/** What an account without an access role sees: only the knowledge base. */
+export const DEFAULT_SECTIONS: Section[] = ['knowledge'];
 
 export function isSection(value: unknown): value is Section {
   return SECTIONS.some((s) => s.id === value);
