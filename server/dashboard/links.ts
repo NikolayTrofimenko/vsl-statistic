@@ -47,6 +47,7 @@ const COLUMN_TITLES: Record<number, string> = {
 const VERDICTS = new Set<number>([COL.scaling, COL.failed, COL.squeezed, COL.zero]);
 const SCALING = new Set<number>([COL.scaling]);
 const TESTING = new Set<number>([COL.testing]);
+const NEW_OFFERS = new Set<number>([COL.newOffers]);
 
 const PROP = { buyer: 507373, team: 506928, vertical: 508175, geo: 508176 } as const;
 
@@ -60,6 +61,8 @@ export interface Link {
   vertical: string | null;
   geo: string | null;
   toTest: string | null;
+  /** First day in «Новые офферы на тест» — the offer was handed over for testing. */
+  newOffer: string | null;
   tested: string | null;
   scaled: string | null;
 }
@@ -72,6 +75,7 @@ export function loadLinks(): Link[] {
     vertical: card.select(PROP.vertical).map(short).join(', ') || null,
     geo: card.select(PROP.geo).map(short).join(', ') || null,
     toTest: firstEntry(card, TESTING),
+    newOffer: firstEntry(card, NEW_OFFERS),
     tested: firstEntry(card, VERDICTS),
     scaled: firstEntry(card, SCALING),
   }));
@@ -105,14 +109,14 @@ export const LINK_METRICS: LinkMetricDef[] = [
   { id: 'buying.tested', label: 'Связок протестировано', block: 'buying', split: 'buyer', flow: (l, p) => inside(l.tested, p) },
   { id: 'buying.startedScaling', label: 'Связок начали масштабировать', block: 'buying', split: 'buyer', flow: (l, p) => inside(l.scaled, p) },
   { id: 'buying.scaling', label: 'Всего масштабируемых связок', block: 'buying', split: 'buyer', snapshot: scalingAt },
-  // Offer requests: "tested" = the first test verdict (to be confirmed by the owner).
+  // Offer requests: counted when the card first lands in «Новые офферы на тест» (Илья, 16.11).
   {
     id: 'marketing.tested',
     label: 'Новых протестированных офферов',
     block: 'marketing',
     type: TYPE.offerRequest,
     split: 'team',
-    flow: (l, p) => inside(l.tested, p),
+    flow: (l, p) => inside(l.newOffer, p),
   },
   {
     id: 'marketing.scaled',
