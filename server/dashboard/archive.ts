@@ -6,8 +6,9 @@ import type { DashDetail, DashMetric, DashPeriod } from '../../src/shared/dashbo
 /**
  * «Связок найдено и передано в отдел новых связок»: the analysts' archive on
  * Google Drive («База лендов Euphoria»). Top-level folders are verticals; each
- * folder inside a vertical is one link, counted on the day it was created
- * there (Moscow). Read live from Drive, cached for a few minutes.
+ * item inside a vertical (a video of the landing, or a folder) is one link,
+ * counted on the day it was put there (Moscow); Mac's .DS_Store is skipped.
+ * Read live from Drive, cached for a few minutes.
  */
 
 const log = scopedLogger('dashboard');
@@ -24,42 +25,50 @@ interface ArchiveLink {
   name: string;
   vertical: string;
   day: string;
+  folder: boolean;
 }
 
 interface DriveItem {
   id: string;
   name: string;
+  mimeType: string;
   createdTime: string;
 }
 
 let cache: { at: number; links: ArchiveLink[] } | null = null;
 let inflight: Promise<ArchiveLink[]> | null = null;
 
-async function subfolders(parent: string): Promise<DriveItem[]> {
+async function children(parent: string, foldersOnly: boolean): Promise<DriveItem[]> {
   const out: DriveItem[] = [];
   let pageToken = '';
   do {
-    const q = encodeURIComponent(`'${parent}' in parents and mimeType = '${FOLDER}' and trashed = false`);
+    const q = encodeURIComponent(`'${parent}' in parents and ${foldersOnly ? `mimeType = '${FOLDER}' and ` : ''}trashed = false`);
     const r = await googleFetch(
       `https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true` +
-        `&pageSize=1000&fields=nextPageToken,files(id,name,createdTime)${pageToken ? `&pageToken=${pageToken}` : ''}`,
+        `&pageSize=1000&fields=nextPageToken,files(id,name,mimeType,createdTime)${pageToken ? `&pageToken=${pageToken}` : ''}`,
     );
     if (!r.ok) throw new Error(`Google Drive ответил ${r.status}`);
     const j = (await r.json()) as { files: DriveItem[]; nextPageToken?: string };
     out.push(...j.files);
     pageToken = j.nextPageToken ?? '';
   } while (pageToken);
-  return out;
+  return out.filter((f) => !f.name.startsWith('.'));
 }
 
 async function loadArchive(): Promise<ArchiveLink[]> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.links;
   inflight ??= (async () => {
     try {
-      const verticals = await subfolders(ARCHIVE_FOLDER_ID);
+      const verticals = await children(ARCHIVE_FOLDER_ID, true);
       const lists = await Promise.all(
         verticals.map(async (v) =>
-          (await subfolders(v.id)).map((f) => ({ id: f.id, name: f.name, vertical: v.name, day: dayIn(f.createdTime) })),
+          (await children(v.id, false)).map((f) => ({
+            id: f.id,
+            name: f.name.replace(/\.(mp4|mov|webm|m4v)$/i, ''),
+            vertical: v.name,
+            day: dayIn(f.createdTime),
+            folder: f.mimeType === FOLDER,
+          })),
         ),
       );
       const links = lists.flat();
@@ -102,7 +111,7 @@ export async function archiveDetail(period: DashPeriod): Promise<DashDetail> {
     rows: links.map((l) => ({
       name: l.name,
       cells: [l.vertical, fmtDay(l.day)],
-      url: `https://drive.google.com/drive/folders/${l.id}`,
+      url: l.folder ? `https://drive.google.com/drive/folders/${l.id}` : `https://drive.google.com/file/d/${l.id}/view`,
     })),
   };
 }
