@@ -106,7 +106,15 @@ interface LinkMetricDef {
 }
 
 export const LINK_METRICS: LinkMetricDef[] = [
-  { id: 'buying.tested', label: 'Связок протестировано', block: 'buying', split: 'buyer', flow: (l, p) => inside(l.tested, p) },
+  // Only «Новые связки на тест» cards: landing edits and offer requests reach the same verdict columns (Илья, 16.11).
+  {
+    id: 'buying.tested',
+    label: 'Связок протестировано',
+    block: 'buying',
+    type: TYPE.newLink,
+    split: 'buyer',
+    flow: (l, p) => inside(l.tested, p),
+  },
   { id: 'buying.startedScaling', label: 'Связок начали масштабировать', block: 'buying', split: 'buyer', flow: (l, p) => inside(l.scaled, p) },
   { id: 'buying.scaling', label: 'Всего масштабируемых связок', block: 'buying', split: 'buyer', snapshot: scalingAt },
   // Offer requests: counted when the card first lands in «Новые офферы на тест» (Илья, 16.11).
@@ -179,7 +187,7 @@ export function linksByBuyer(links: Link[], period: DashPeriod): Map<string, { t
   const out = new Map<string, { tested: number; startedScaling: number; scaling: number; hits: number }>();
   const end = endOf(period);
   for (const l of links) {
-    const tested = inside(l.tested, period);
+    const tested = l.card.type === TYPE.newLink && inside(l.tested, period);
     const started = inside(l.scaled, period);
     const now = scalingAt(l, end);
     if (!tested && !started && !now) continue;
