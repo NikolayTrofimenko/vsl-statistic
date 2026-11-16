@@ -23,14 +23,14 @@ const CALL_GAP_MS = 250;
  * department (Технические проблемы, Задачи по автоматизации) and the promo
  * department's "Креативы — общий поток" and Промо-отдел HYD (two boards).
  */
-export const KAITEN_BOARDS = [1962805, 1957064, 1970273, 1560820, 1856420, 1857364, 1538010, 1752655, 1752656];
+export const KAITEN_BOARDS = [1962805, 1957064, 1970273, 1560820, 1856420, 1857364, 1538010];
 
 /**
  * Task boards read only for "done in the period": a card untouched for this
  * long cannot have moved within the dashboard's history, so its moves are not
  * fetched (the creatives board alone holds ~3000 cards).
  */
-const RECENT_ONLY_BOARDS = new Set([1856420, 1857364, 1538010, 1752655, 1752656]);
+const RECENT_ONLY_BOARDS = new Set([1856420, 1857364, 1538010]);
 const RECENT_MS = 270 * 24 * 60 * 60_000;
 
 /**

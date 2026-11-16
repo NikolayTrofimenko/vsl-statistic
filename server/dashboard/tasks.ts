@@ -34,11 +34,9 @@ export const TASK_METRICS: TaskMetricDef[] = [
   {
     id: 'analytics.promo',
     label: 'Промо задач выполнено',
-    source: 'Kaiten · Промо-отдел + HYD',
+    source: 'Kaiten · Промо-отдел',
     boards: [
       { id: 1538010, title: 'Креативы', done: 5350122 },
-      { id: 1752655, title: 'HYD', done: 6057169 },
-      { id: 1752656, title: 'HYD-ВСЛ', done: 6057176 },
     ],
   },
 ];
