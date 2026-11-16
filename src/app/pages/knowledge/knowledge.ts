@@ -24,7 +24,7 @@ const DATE = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', 
         <h1>База знаний</h1>
         <p>Инструкции, обучение и полезное — документами с текстом, картинками, видео и ссылками.</p>
       </div>
-      @if (api.isAdmin()) {
+      @if (api.can('knowledgeEdit')) {
         <div class="add">
           <button mat-stroked-button (click)="addVideo()"><mat-icon>video_call</mat-icon>Видео</button>
           <button mat-flat-button (click)="create()"><mat-icon>add</mat-icon>Документ</button>
@@ -37,7 +37,7 @@ const DATE = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', 
     } @else if (!docs().length) {
       <div class="empty">
         <mat-icon>school</mat-icon>
-        <div>Пока пусто.{{ api.isAdmin() ? ' Нажми «Новый документ», чтобы написать первый.' : '' }}</div>
+        <div>Пока пусто.{{ api.can('knowledgeEdit') ? ' Нажми «Новый документ», чтобы написать первый.' : '' }}</div>
       </div>
     } @else {
       <div class="layout">

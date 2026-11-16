@@ -52,7 +52,7 @@ const DATE = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', y
             <h1>{{ d.title }}</h1>
             <div class="meta">Обновлено {{ date(d.updatedAt) }}</div>
           </div>
-          @if (api.isAdmin()) {
+          @if (api.can('knowledgeEdit')) {
             <div class="head-actions">
               <button mat-stroked-button (click)="edit()"><mat-icon>edit</mat-icon>Редактировать</button>
               <button mat-button class="danger" (click)="remove(d)"><mat-icon>delete</mat-icon>Удалить</button>
@@ -194,7 +194,7 @@ export class KnowledgeDocPage implements OnInit {
   async ngOnInit(): Promise<void> {
     try {
       if (this.id() === 'new') {
-        if (!this.api.isAdmin()) {
+        if (!this.api.can('knowledgeEdit')) {
           void this.router.navigateByUrl('/knowledge');
           return;
         }

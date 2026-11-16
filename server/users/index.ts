@@ -216,6 +216,7 @@ export function saveAccessRole(input: AccessRoleInput): AccessRole {
   // Kept in menu order, unknown ids dropped.
   const picked = new Set(input.sections ?? []);
   if (picked.has('offersEdit')) picked.add('offers'); // editing offers means seeing them
+  if (picked.has('knowledgeEdit')) picked.add('knowledge');
   const sections = SECTIONS.map((s) => s.id).filter((id) => picked.has(id));
   const conn = db();
   // Compared here, not by SQL: NOCASE folds only ASCII, and role names are Russian.

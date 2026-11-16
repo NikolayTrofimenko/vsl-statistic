@@ -468,6 +468,7 @@ const MIGRATIONS: Migration[] = [
 
   /* 26 — Офферы: hand-kept offer cards; buyers' roles see them, tech specialist and biz-dev edit */
   offersSection,
+  knowledgeSection,
 ];
 
 /**
@@ -605,6 +606,21 @@ function offersSection(conn: DatabaseSync): void {
     }
     const next = [...new Set([...list, ...add])];
     conn.prepare('UPDATE access_roles SET sections = ? WHERE id = ?').run(JSON.stringify(next), r.id);
+  }
+}
+
+/** База знаний becomes a section: every existing role keeps seeing it, as before. */
+function knowledgeSection(conn: DatabaseSync): void {
+  const roles = conn.prepare('SELECT id, sections FROM access_roles').all() as { id: number; sections: string }[];
+  for (const r of roles) {
+    let list: string[] = [];
+    try {
+      list = JSON.parse(r.sections) as string[];
+    } catch {
+      /* broken list — start over */
+    }
+    if (!list.includes('knowledge')) list.push('knowledge');
+    conn.prepare('UPDATE access_roles SET sections = ? WHERE id = ?').run(JSON.stringify(list), r.id);
   }
 }
 

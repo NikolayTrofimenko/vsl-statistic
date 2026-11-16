@@ -112,11 +112,13 @@ export const routes: Routes = [
   },
   {
     path: 'knowledge',
+    canActivate: [section('knowledge')],
     loadComponent: () => import('./pages/knowledge/knowledge').then((m) => m.KnowledgePage),
     title: 'База знаний',
   },
   {
     path: 'knowledge/:id',
+    canActivate: [section('knowledge')],
     loadComponent: () => import('./pages/knowledge/knowledge-doc').then((m) => m.KnowledgeDocPage),
     title: 'База знаний',
   },

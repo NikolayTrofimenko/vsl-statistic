@@ -18,7 +18,7 @@ import type { DashDetail, DashPeriodKind, Dashboard } from './dashboard.types';
 export type UserRole = 'buyer' | 'teamlead' | 'admin';
 
 /** A part of the app an access role can open (see `src/shared/access.ts`). */
-export type Section = 'library' | 'caps' | 'domains' | 'quality' | 'history' | 'grants' | 'offers' | 'offersEdit';
+export type Section = 'library' | 'caps' | 'domains' | 'quality' | 'history' | 'grants' | 'offers' | 'offersEdit' | 'knowledge' | 'knowledgeEdit';
 
 export interface SessionUser {
   id: number;

@@ -67,9 +67,9 @@ export function createApp(): express.Express {
   app.get('/api/drive/stream/:id', requireSection('library'), streamVideo);
   // Raw file body, streamed to Drive — no body parser in front of it.
   app.post('/api/library/upload', requireSection('library'), uploadCreative);
-  // База знаний: everyone reads, the admin uploads images and videos for documents.
-  app.get('/api/knowledge/file/:id', requireAuth, serveKnowledgeFile);
-  app.post('/api/knowledge/upload', requireAdmin, uploadKnowledge);
+  // База знаний: section 'knowledge' reads, 'knowledgeEdit' uploads images and videos for documents.
+  app.get('/api/knowledge/file/:id', requireSection('knowledge'), serveKnowledgeFile);
+  app.post('/api/knowledge/upload', requireSection('knowledgeEdit'), uploadKnowledge);
   app.get('/api/offers/photo/:id', requireSection('offers'), serveOfferPhoto);
   app.post(
     '/api/offers/photo/:id',
@@ -145,9 +145,6 @@ const ADMIN_CHANNELS = new Set([
   'stats:apiKeys',
   'stats:createApiKey',
   'stats:revokeApiKey',
-  'knowledge:save',
-  'knowledge:delete',
-  'knowledge:import',
 ]);
 
 /** Writes inside a section that only some of its readers may make. */
@@ -155,10 +152,13 @@ const EDIT_CHANNELS: Record<string, Section> = {
   'offers:save': 'offersEdit',
   'offers:delete': 'offersEdit',
   'offers:partners': 'offersEdit',
+  'knowledge:save': 'knowledgeEdit',
+  'knowledge:delete': 'knowledgeEdit',
+  'knowledge:import': 'knowledgeEdit',
 };
 
 /** Reference data several sections show (vertical names and codes). */
-const OPEN_CHANNELS = new Set(['library:verticals', 'knowledge:list', 'knowledge:get']);
+const OPEN_CHANNELS = new Set(['library:verticals']);
 
 /** Open to team leads without the section too — `server/api/grants.handlers.ts` checks and scopes. */
 const HANDLER_CHECKED_PREFIXES = new Set(['grants']);
@@ -174,6 +174,7 @@ const SECTION_OF_PREFIX: Record<string, Section> = {
   domains: 'domains',
   history: 'history',
   offers: 'offers',
+  knowledge: 'knowledge',
 };
 
 /** Serve the built Angular bundle, falling back to index.html for deep links. */

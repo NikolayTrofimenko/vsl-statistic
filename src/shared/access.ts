@@ -15,10 +15,13 @@ export const SECTIONS: { id: Section; label: string; path: string }[] = [
   { id: 'offers', label: 'Офферы', path: '/offers' },
   // Same page; the role may also add and change offers (implies 'offers').
   { id: 'offersEdit', label: 'Офферы: правка', path: '/offers' },
+  { id: 'knowledge', label: 'База знаний', path: '/knowledge' },
+  // Same page; the role may also write, upload and delete documents (implies 'knowledge').
+  { id: 'knowledgeEdit', label: 'База знаний: правка', path: '/knowledge' },
 ];
 
 /** What an account without an access role sees — the same as before roles existed. */
-export const DEFAULT_SECTIONS: Section[] = ['library'];
+export const DEFAULT_SECTIONS: Section[] = ['library', 'knowledge'];
 
 export function isSection(value: unknown): value is Section {
   return SECTIONS.some((s) => s.id === value);
