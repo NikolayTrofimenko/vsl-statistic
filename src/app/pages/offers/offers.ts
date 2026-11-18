@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../core/services/api.service';
 import { countryName } from '../../../shared/geo';
@@ -15,7 +16,7 @@ import type { Offer } from '../../../shared/api.types';
 /** Офферы: the hand-kept registry. Everyone with the section reads; `offersEdit` adds and changes. */
 @Component({
   selector: 'app-offers',
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressBarModule],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
   template: `
     <header class="page-header">
       <div>
@@ -69,6 +70,9 @@ import type { Offer } from '../../../shared/api.types';
                 <th class="num">Гарант</th>
                 <th>Цена на ленде</th>
                 <th>КЦ</th>
+                @if (canEdit()) {
+                  <th></th>
+                }
               </tr>
             </thead>
             <tbody>
@@ -97,6 +101,14 @@ import type { Offer } from '../../../shared/api.types';
                       <div class="sub">{{ o.ccMode }}</div>
                     }
                   </td>
+                  @if (canEdit()) {
+                    <td class="actions" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()">
+                      <button mat-icon-button matTooltip="Изменить" aria-label="Изменить" (click)="edit(o)"><mat-icon>edit</mat-icon></button>
+                      <button mat-icon-button matTooltip="Копировать в новый оффер" aria-label="Копировать" (click)="edit(undefined, o)">
+                        <mat-icon>content_copy</mat-icon>
+                      </button>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>
@@ -196,6 +208,18 @@ import type { Offer } from '../../../shared/api.types';
       }
       .name {
         font-weight: 500;
+      }
+      .actions {
+        width: 1%;
+        white-space: nowrap;
+        text-align: right;
+        padding: 0 6px;
+      }
+      .actions button {
+        color: var(--text-muted);
+      }
+      .actions button:hover {
+        color: var(--text);
       }
       .sub {
         font-size: 12px;
