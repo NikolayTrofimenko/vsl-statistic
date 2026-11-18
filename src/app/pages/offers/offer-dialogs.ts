@@ -65,6 +65,7 @@ export interface OfferViewData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       @if (data.canEdit) {
+        <button mat-button [mat-dialog-close]="'copy'"><mat-icon>content_copy</mat-icon>Копировать</button>
         <button mat-stroked-button [mat-dialog-close]="'edit'"><mat-icon>edit</mat-icon>Изменить</button>
       }
       <button mat-button mat-dialog-close>Закрыть</button>
@@ -144,6 +145,8 @@ export class OfferViewDialog {
 
 export interface OfferEditData {
   offer?: Offer;
+  /** Start a new offer filled from this one (name gets « (копия)», photo is copied on save). */
+  copyFrom?: Offer;
   verticals: string[];
   partners: string[];
 }
@@ -153,7 +156,7 @@ export interface OfferEditData {
   selector: 'app-offer-edit',
   imports: [FormsModule, MatDialogModule, MatButtonModule, MatIconModule],
   template: `
-    <h2 mat-dialog-title>{{ data.offer ? 'Изменить оффер' : 'Новый оффер' }}</h2>
+    <h2 mat-dialog-title>{{ data.offer ? 'Изменить оффер' : data.copyFrom ? 'Копия оффера' : 'Новый оффер' }}</h2>
     <mat-dialog-content>
       <div class="form">
         <div class="photo-box">
@@ -183,12 +186,12 @@ export interface OfferEditData {
           </label>
           <label>
             <span>Гео</span>
-            <select [(ngModel)]="f.geo">
-              <option value="">—</option>
+            <input [(ngModel)]="f.geo" list="offer-geos" maxlength="40" placeholder="Впиши код или страну: ES" (blur)="fixGeo()" />
+            <datalist id="offer-geos">
               @for (c of countries; track c[0]) {
-                <option [value]="c[0]">{{ c[0] }} · {{ c[1] }}</option>
+                <option [value]="c[0]">{{ c[1] }}</option>
               }
-            </select>
+            </datalist>
           </label>
           <label>
             <span>ПП (партнёрка)</span>
@@ -371,6 +374,8 @@ export class OfferEditDialog {
 
   readonly f: OfferInput = this.data.offer
     ? (({ photoUrl: _p, updatedAt: _u, updatedBy: _b, ...rest }) => rest)(this.data.offer)
+    : this.data.copyFrom
+    ? (({ id: _i, photoUrl: _p, updatedAt: _u, updatedBy: _b, ...rest }) => ({ ...rest, name: `${rest.name} (копия)` }))(this.data.copyFrom)
     : {
         name: '',
         vertical: '',
@@ -389,7 +394,20 @@ export class OfferEditDialog {
       };
 
   private photo: File | null = null;
-  readonly preview = signal<string | null>(this.data.offer?.photoUrl ?? null);
+  readonly preview = signal<string | null>(this.data.offer?.photoUrl ?? this.data.copyFrom?.photoUrl ?? null);
+
+  /** "es", " ES", "Испания" → "ES"; unknown text stays for the server to reject. */
+  fixGeo(): void {
+    const t = this.f.geo.trim();
+    const code = t.toUpperCase();
+    if (!t || code in COUNTRIES) {
+      this.f.geo = code;
+      return;
+    }
+    const low = t.toLowerCase();
+    const hit = this.countries.find(([, name]) => name.toLowerCase() === low) ?? this.countries.find(([, name]) => name.toLowerCase().startsWith(low));
+    if (hit) this.f.geo = hit[0];
+  }
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -409,7 +427,16 @@ export class OfferEditDialog {
     this.busy.set(true);
     this.error.set(null);
     try {
+      this.fixGeo();
+      if (this.f.geo && !(this.f.geo in COUNTRIES)) throw new Error(`Не знаю такое гео: «${this.f.geo}». Впиши код страны, например ES.`);
       let saved = await this.api.offers.save(this.f);
+      if (!this.photo && this.data.copyFrom?.photoUrl) {
+        const r = await fetch(this.data.copyFrom.photoUrl);
+        if (r.ok) {
+          const blob = await r.blob();
+          this.photo = new File([blob], 'photo', { type: blob.type || 'image/jpeg' });
+        }
+      }
       if (this.photo) saved = await this.api.offers.uploadPhoto(saved.id, this.photo);
       this.ref.close(saved);
     } catch (err) {

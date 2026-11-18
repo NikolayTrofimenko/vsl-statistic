@@ -274,18 +274,21 @@ export class OffersPage implements OnInit {
   }
 
   async open(offer: Offer): Promise<void> {
-    const ref = this.dialog.open<OfferViewDialog, OfferViewData, 'edit'>(OfferViewDialog, {
+    const ref = this.dialog.open<OfferViewDialog, OfferViewData, 'edit' | 'copy'>(OfferViewDialog, {
       data: { offer, canEdit: this.canEdit() },
       width: '720px',
       maxWidth: '95vw',
       autoFocus: false,
     });
-    if ((await firstValueFrom(ref.afterClosed())) === 'edit') await this.edit(offer);
+    const action = await firstValueFrom(ref.afterClosed());
+    if (action === 'edit') await this.edit(offer);
+    if (action === 'copy') await this.edit(undefined, offer);
   }
 
-  async edit(offer?: Offer): Promise<void> {
+  async edit(offer?: Offer, copyFrom?: Offer): Promise<void> {
     const data: OfferEditData = {
       offer,
+      copyFrom,
       verticals: this.verticals(),
       partners: uniq([...this.keitaroPartners(), ...this.offers().map((o) => o.partner)]),
     };
