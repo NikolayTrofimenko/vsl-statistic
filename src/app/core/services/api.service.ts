@@ -18,6 +18,8 @@ export class ApiService {
   readonly isAdmin = computed(() => this.role() === 'admin');
   /** Sections this account may open (the server decides; this only shapes the UI). */
   readonly sections = computed<Section[]>(() => this.user()?.sections ?? []);
+  /** Unread notifications: polled by the shell, zeroed by the notifications page. */
+  readonly unread = signal(0);
 
   /**
    * The first session check. Started in the constructor, not as a field
@@ -69,6 +71,7 @@ export class ApiService {
   readonly history = this.api.history;
   readonly knowledge = this.api.knowledge;
   readonly offers = this.api.offers;
+  readonly notifications = this.api.notifications;
   readonly caps = this.api.caps;
   readonly domains = this.api.domains;
   readonly grants = this.api.grants;

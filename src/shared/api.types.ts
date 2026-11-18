@@ -308,6 +308,28 @@ export interface Offer {
 
 export type OfferInput = Omit<Offer, 'id' | 'photoUrl' | 'updatedAt' | 'updatedBy'> & { id?: number };
 
+/* ============================ Уведомления ============================ */
+
+/** One event from some module; a person sees those of the sections they can open. */
+export interface AppNotification {
+  id: number;
+  section: Section;
+  title: string;
+  /** Details, one change per line. */
+  body: string;
+  /** In-app path, e.g. "/offers?open=12". */
+  link: string | null;
+  /** Who did it; null — the system. */
+  actor: string | null;
+  createdAt: number;
+  unread: boolean;
+}
+
+export interface NotificationPage {
+  items: AppNotification[];
+  unread: number;
+}
+
 /* ============================ База знаний ============================ */
 
 /** A document in the list: no body. */
@@ -972,6 +994,13 @@ export interface VslStatApi {
     check(domains: string[]): Promise<DomainCheck[]>;
     /** Register on Namecheap, add to Cloudflare, point NS there. */
     buy(input: BuyInput): Promise<BuyResult>;
+  };
+  /** Everyone signed in; each sees the events of the sections they can open. */
+  notifications: {
+    /** Newest first; `before` — an id, for the next page. */
+    list(before?: number | null): Promise<NotificationPage>;
+    unread(): Promise<number>;
+    markRead(): Promise<void>;
   };
   /** Section `offers` reads; `offersEdit` writes. */
   offers: {

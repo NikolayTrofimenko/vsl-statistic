@@ -469,6 +469,26 @@ const MIGRATIONS: Migration[] = [
   /* 26 — Офферы: hand-kept offer cards; buyers' roles see them, tech specialist and biz-dev edit */
   offersSection,
   knowledgeSection,
+
+  /* 28 — Уведомления: one feed for every module, filtered by section; read mark per person */
+  `
+  CREATE TABLE notifications (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    section    TEXT NOT NULL,
+    entity     TEXT NOT NULL,
+    title      TEXT NOT NULL,
+    body       TEXT NOT NULL DEFAULT '',
+    link       TEXT,
+    actor_id   INTEGER,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX notifications_entity ON notifications (entity, created_at);
+  CREATE INDEX notifications_created ON notifications (created_at);
+  CREATE TABLE notification_seen (
+    user_id INTEGER PRIMARY KEY,
+    last_id INTEGER NOT NULL DEFAULT 0
+  );
+  `,
 ];
 
 /**

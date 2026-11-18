@@ -203,6 +203,12 @@ export function createHttpApi(options: HttpApiOptions = {}): VslStatApi {
       list: () => rpc('history:list'),
     },
 
+    notifications: {
+      list: (before) => rpc('notifications:list', before ?? null),
+      unread: () => rpc('notifications:unread'),
+      markRead: () => rpc('notifications:markRead'),
+    },
+
     offers: {
       list: () => rpc('offers:list'),
       save: (input) => rpc('offers:save', input),

@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -216,6 +217,8 @@ export class OffersPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly canEdit = computed(() => this.api.can('offersEdit'));
   readonly offers = signal<Offer[]>([]);
@@ -250,6 +253,15 @@ export class OffersPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.reload();
+    // A link from a notification: /offers?open=12 opens that card.
+    this.route.queryParamMap.subscribe((q) => {
+      const id = Number(q.get('open'));
+      if (!id) return;
+      void this.router.navigate([], { queryParams: { open: null }, replaceUrl: true });
+      const offer = this.offers().find((o) => o.id === id);
+      if (offer) void this.open(offer);
+      else this.snack.open('Этого оффера уже нет.', 'OK', { duration: 4000 });
+    });
     try {
       this.libraryVerticals.set((await this.api.library.verticals()).map((v) => v.name).filter(Boolean));
     } catch {

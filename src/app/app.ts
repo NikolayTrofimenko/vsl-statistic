@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
@@ -33,6 +33,7 @@ export class App {
 
   readonly nav = computed(() =>
     [
+      { path: '/notifications', icon: 'notifications', label: 'Уведомления', show: true, badge: this.api.unread() },
       { path: '/dashboard', icon: 'dashboard', label: 'Дашборд', show: this.api.isAdmin() },
       { path: '/library', icon: 'video_library', label: 'Библиотека крео', show: this.api.can('library') },
       { path: '/quality', icon: 'insights', label: 'Качество на лендах', show: this.api.can('quality') },
@@ -45,6 +46,27 @@ export class App {
       { path: '/apifb', icon: 'send', label: 'Тест Facebook', show: this.api.isAdmin() },
     ].filter((item) => item.show),
   );
+
+  constructor() {
+    // The unread counter: now, every minute, and when the tab comes back.
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const poll = () => {
+      if (this.api.authenticated()) this.api.notifications.unread().then((n) => this.api.unread.set(n), () => undefined);
+    };
+    const onVisible = () => document.visibilityState === 'visible' && poll();
+    effect(() => {
+      if (timer) clearInterval(timer);
+      timer = null;
+      if (!this.api.authenticated()) return;
+      poll();
+      timer = setInterval(poll, 60_000);
+    });
+    document.addEventListener('visibilitychange', onVisible);
+    inject(DestroyRef).onDestroy(() => {
+      if (timer) clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    });
+  }
 
   readonly roleLabel = computed(() => this.api.user()?.accessRole ?? ROLE_LABELS[this.api.role() ?? 'buyer']);
 

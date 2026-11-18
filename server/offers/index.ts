@@ -4,6 +4,8 @@ import type { Request, Response } from 'express';
 import { db } from '../db';
 import { dataDir } from '../config';
 import { scopedLogger } from '../logger';
+import { notify } from '../notifications';
+import { countryName } from '../../src/shared/geo';
 import { COUNTRIES } from '../../src/shared/geo';
 import { OFFER_CURRENCIES as CURRENCIES } from '../../src/shared/offers';
 import type { Offer, OfferInput } from '../../src/shared/api.types';
@@ -51,6 +53,7 @@ export function saveOffer(input: OfferInput, userId: number): Offer {
   const conn = db();
   const now = Date.now();
   let id = input.id;
+  const before = id ? (conn.prepare(`${SELECT} WHERE o.id = ?`).get(id) as unknown as Row | undefined) : undefined;
   const values = [
     f.name, f.vertical, f.geo, f.partner, f.cap, f.payout, f.payoutCurrency, f.landPrice, f.guarantee,
     f.brief, f.ccMode, f.ccLanguage, f.regionExclusions, f.active ? 1 : 0, userId, now,
@@ -76,20 +79,74 @@ export function saveOffer(input: OfferInput, userId: number): Offer {
     );
   }
   log.info(`Оффер «${f.name}» сохранён.`);
-  return get(id);
+  const saved = get(id);
+  offerEvent(before ? toOffer(before) : null, saved, userId);
+  return saved;
 }
 
-export function deleteOffer(id: number): void {
+/* ------------------------------ notifications ------------------------------ */
+
+const FIELDS: [keyof Offer, string][] = [
+  ['name', 'Название'],
+  ['vertical', 'Вертикаль'],
+  ['geo', 'Гео'],
+  ['partner', 'ПП'],
+  ['payout', 'Выплата'],
+  ['cap', 'Капа'],
+  ['guarantee', 'Гарант'],
+  ['landPrice', 'Цена на ленде'],
+  ['ccMode', 'Режим КЦ'],
+  ['ccLanguage', 'Язык КЦ'],
+  ['regionExclusions', 'Исключения по регионам'],
+  ['brief', 'Бриф'],
+];
+/** Long texts: say that they changed, not what. */
+const LONG = new Set<keyof Offer>(['regionExclusions', 'brief']);
+
+function show(o: Offer, key: keyof Offer): string {
+  const v = o[key];
+  if (key === 'payout') return o.payout === null ? '—' : o.payoutCurrency === 'USD' ? `$${o.payout}` : `${o.payout} ${o.payoutCurrency}`;
+  if (key === 'geo') return o.geo ? `${o.geo} · ${countryName(o.geo)}` : '—';
+  return v === null || v === '' ? '—' : String(v);
+}
+
+function headline(o: Offer): string {
+  return [o.geo, o.partner].filter(Boolean).join(' · ');
+}
+
+function offerEvent(before: Offer | null, after: Offer, userId: number): void {
+  const base = { section: 'offers' as const, entity: `offer:${after.id}`, link: `/offers?open=${after.id}`, actorId: userId };
+  if (!before) {
+    const facts = [headline(after), after.payout !== null ? `выплата ${show(after, 'payout')}` : '', after.cap !== null ? `капа ${after.cap}` : '']
+      .filter(Boolean)
+      .join(' · ');
+    notify({ ...base, title: `Новый оффер: ${after.name}`, body: facts });
+    return;
+  }
+  const lines: string[] = [];
+  if (before.active !== after.active) lines.push(after.active ? 'Снова активен' : 'Выключен');
+  for (const [key, label] of FIELDS) {
+    const a = show(before, key);
+    const b = show(after, key);
+    if (a === b) continue;
+    lines.push(LONG.has(key) ? `${label}: изменено` : `${label}: ${a} → ${b}`);
+  }
+  if (!lines.length) return;
+  notify({ ...base, title: `Оффер изменён: ${after.name}${headline(after) ? ` (${headline(after)})` : ''}`, body: lines.join('\n') });
+}
+
+export function deleteOffer(id: number, userId: number | null = null): void {
   const conn = db();
   const row = conn.prepare('SELECT name, photo FROM offers WHERE id = ?').get(id) as { name: string; photo: string | null } | undefined;
   if (!row) return;
   conn.prepare('DELETE FROM offers WHERE id = ?').run(id);
   if (row.photo) fs.rm(path.join(photoDir(), row.photo), { force: true }, () => undefined);
   log.info(`Оффер «${row.name}» удалён.`);
+  notify({ section: 'offers', entity: `offer:${id}`, title: `Оффер удалён: ${row.name}`, link: null, actorId: userId, merge: false });
 }
 
 /** POST /api/offers/photo/:id — raw image body (png, jpg, webp); replaces the old one. */
-export function uploadOfferPhoto(req: Request, res: Response): void {
+export function uploadOfferPhoto(req: Request, res: Response, userId: number | null = null): void {
   const id = Number(req.params['id']);
   const row = db().prepare('SELECT photo FROM offers WHERE id = ?').get(id) as { photo: string | null } | undefined;
   if (!row) {
@@ -110,7 +167,10 @@ export function uploadOfferPhoto(req: Request, res: Response): void {
   fs.writeFileSync(path.join(photoDir(), name), body);
   db().prepare('UPDATE offers SET photo = ? WHERE id = ?').run(name, id);
   if (row.photo) fs.rm(path.join(photoDir(), row.photo), { force: true }, () => undefined);
-  res.json({ ok: true, data: get(id) });
+  const offer = get(id);
+  // Right after creating or editing, this merges into that event.
+  notify({ section: 'offers', entity: `offer:${id}`, title: `Оффер изменён: ${offer.name}`, body: row.photo ? 'Новое фото' : 'Добавлено фото', link: `/offers?open=${id}`, actorId: userId });
+  res.json({ ok: true, data: offer });
 }
 
 /** GET /api/offers/photo/:id */

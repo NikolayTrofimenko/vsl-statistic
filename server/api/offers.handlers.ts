@@ -9,5 +9,5 @@ export function registerOffersHandlers(): void {
   handle('offers:list', (): Offer[] => listOffers());
   handle('offers:save', (input: OfferInput): Offer => saveOffer(input ?? ({} as OfferInput), currentUser().id));
   handle('offers:partners', async (): Promise<string[]> => (keitaroConfigured() ? listNetworkNames() : []));
-  handle('offers:delete', (id: number): void => deleteOffer(Number(id)));
+  handle('offers:delete', (id: number): void => deleteOffer(Number(id), currentUser().id));
 }

@@ -75,7 +75,7 @@ export function createApp(): express.Express {
     '/api/offers/photo/:id',
     requireSection('offersEdit'),
     express.raw({ type: () => true, limit: MAX_PHOTO }),
-    uploadOfferPhoto,
+    (req: Request, res: Response) => uploadOfferPhoto(req, res, sessionUser(req)?.id ?? null),
   );
 
   app.use('/api', (_req: Request, res: Response) => {

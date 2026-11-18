@@ -111,6 +111,11 @@ export const routes: Routes = [
     title: 'Тест Facebook',
   },
   {
+    path: 'notifications',
+    loadComponent: () => import('./pages/notifications/notifications').then((m) => m.NotificationsPage),
+    title: 'Уведомления',
+  },
+  {
     path: 'offers',
     canActivate: [section('offers')],
     loadComponent: () => import('./pages/offers/offers').then((m) => m.OffersPage),
