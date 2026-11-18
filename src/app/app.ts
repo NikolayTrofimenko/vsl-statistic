@@ -33,7 +33,6 @@ export class App {
 
   readonly nav = computed(() =>
     [
-      { path: '/notifications', icon: 'notifications', label: 'Уведомления', show: true, badge: this.api.unread() },
       { path: '/dashboard', icon: 'dashboard', label: 'Дашборд', show: this.api.isAdmin() },
       { path: '/library', icon: 'video_library', label: 'Библиотека крео', show: this.api.can('library') },
       { path: '/quality', icon: 'insights', label: 'Качество на лендах', show: this.api.can('quality') },

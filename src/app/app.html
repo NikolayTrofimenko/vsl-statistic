@@ -17,7 +17,7 @@
         @for (item of nav(); track item.path) {
           <a mat-list-item [routerLink]="item.path" routerLinkActive="active">
             <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-            <span matListItemTitle>{{ item.label }}@if (item.badge) {<span class="nav-badge">{{ item.badge > 99 ? '99+' : item.badge }}</span>}</span>
+            <span matListItemTitle>{{ item.label }}</span>
           </a>
         }
       </mat-nav-list>
@@ -47,6 +47,21 @@
     </mat-sidenav>
 
     <mat-sidenav-content class="app-content">
+      <div class="topbar">
+        <a
+          mat-icon-button
+          class="bell"
+          routerLink="/notifications"
+          routerLinkActive="active"
+          [matTooltip]="api.unread() ? 'Новых уведомлений: ' + api.unread() : 'Уведомления'"
+          aria-label="Уведомления"
+        >
+          <mat-icon>{{ api.unread() ? 'notifications_active' : 'notifications_none' }}</mat-icon>
+          @if (api.unread()) {
+            <span class="bell-count">{{ api.unread() > 99 ? '99+' : api.unread() }}</span>
+          }
+        </a>
+      </div>
       <main class="app-main">
         <router-outlet />
       </main>
