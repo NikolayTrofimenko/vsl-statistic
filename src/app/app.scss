@@ -21,8 +21,14 @@
   height: 100vh;
 }
 
+/* Material wraps the rail's content in its own box; make it a column so the
+   notifications row can sit at the very bottom. */
+.app-sidenav ::ng-deep .mat-drawer-inner-container {
+  display: flex;
+  flex-direction: column;
+}
+
 .sidenav-footer {
-  margin-top: auto;
   padding-top: 8px;
 
   .logout-button {
@@ -58,6 +64,40 @@
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text-faint);
+  }
+}
+
+.sidenav-bottom {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--divider);
+
+  .bell {
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 13px;
+    color: var(--text-muted);
+
+    &.active,
+    &:hover {
+      color: var(--text);
+    }
+  }
+
+  .bell-count {
+    margin-left: 8px;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    line-height: 16px;
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 600;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -180,45 +220,9 @@ a.mat-mdc-list-item.active {
   flex-direction: column;
 }
 
-.topbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 6px 16px 0;
-  flex: none;
-}
-
-.bell {
-  position: relative;
-  color: var(--text-muted);
-
-  &.active,
-  &:hover {
-    color: var(--text);
-  }
-}
-
-.bell-count {
-  position: absolute;
-  top: 4px;
-  right: 2px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  box-sizing: border-box;
-  line-height: 16px;
-  text-align: center;
-  font-size: 10px;
-  font-weight: 600;
-  background: var(--accent);
-  color: var(--accent-contrast);
-  border-radius: 8px;
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
-}
-
 .app-main {
   flex: 1;
-  padding: 0 28px 24px;
+  padding: 24px 28px;
   overflow: auto;
   min-height: 0;
 

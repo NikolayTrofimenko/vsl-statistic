@@ -44,24 +44,19 @@
           <span>Выйти</span>
         </button>
       </div>
-    </mat-sidenav>
 
-    <mat-sidenav-content class="app-content">
-      <div class="topbar">
-        <a
-          mat-icon-button
-          class="bell"
-          routerLink="/notifications"
-          routerLinkActive="active"
-          [matTooltip]="api.unread() ? 'Новых уведомлений: ' + api.unread() : 'Уведомления'"
-          aria-label="Уведомления"
-        >
+      <div class="sidenav-bottom">
+        <a mat-button class="bell" routerLink="/notifications" routerLinkActive="active">
           <mat-icon>{{ api.unread() ? 'notifications_active' : 'notifications_none' }}</mat-icon>
+          <span>Уведомления</span>
           @if (api.unread()) {
             <span class="bell-count">{{ api.unread() > 99 ? '99+' : api.unread() }}</span>
           }
         </a>
       </div>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="app-content">
       <main class="app-main">
         <router-outlet />
       </main>
