@@ -42,6 +42,7 @@ export class App {
       { path: '/grants', icon: 'key', label: 'Доступы', show: this.api.canGrants() },
       { path: '/offers', icon: 'local_offer', label: 'Офферы', show: this.api.can('offers') },
       { path: '/knowledge', icon: 'school', label: 'База знаний', show: this.api.can('knowledge') },
+      { path: '/apifb', icon: 'send', label: 'Тест Facebook', show: this.api.isAdmin() },
     ].filter((item) => item.show),
   );
 

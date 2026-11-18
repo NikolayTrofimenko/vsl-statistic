@@ -1,3 +1,4 @@
+import { registerApifbHandlers } from './apifb.handlers';
 import { registerCapsHandlers } from './caps.handlers';
 import { registerDomainsHandlers } from './domains.handlers';
 import { registerDashboardHandlers } from './dashboard.handlers';
@@ -10,6 +11,7 @@ import { registerStatsHandlers } from './stats.handlers';
 import { registerUsersHandlers } from './users.handlers';
 
 export function registerApiHandlers(): void {
+  registerApifbHandlers();
   registerCapsHandlers();
   registerDomainsHandlers();
   registerDashboardHandlers();

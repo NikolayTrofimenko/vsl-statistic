@@ -128,7 +128,14 @@ async function rpcRoute(req: Request, res: Response): Promise<void> {
  */
 function channelAccess(channel: string): Section | 'admin' | null {
   // The dashboard is the owner's for now; its blocks become sections once roles are split.
-  if (ADMIN_CHANNELS.has(channel) || channel.startsWith('users:') || channel.startsWith('dashboard:')) return 'admin';
+  if (
+    ADMIN_CHANNELS.has(channel) ||
+    channel.startsWith('users:') ||
+    channel.startsWith('dashboard:') ||
+    channel.startsWith('apifb:')
+  ) {
+    return 'admin';
+  }
   if (OPEN_CHANNELS.has(channel)) return null;
   if (EDIT_CHANNELS[channel]) return EDIT_CHANNELS[channel];
   const prefix = channel.slice(0, channel.indexOf(':'));

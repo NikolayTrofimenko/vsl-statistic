@@ -255,6 +255,10 @@ export function createHttpApi(options: HttpApiOptions = {}): VslStatApi {
       buyers: (capId, date, days) => rpc('caps:buyers', capId, date, days),
     },
 
+    apifb: {
+      send: (input) => rpc('apifb:send', input),
+    },
+
     tags: {
       list: () => rpc('tags:list'),
       save: (tag) => rpc('tags:save', tag),

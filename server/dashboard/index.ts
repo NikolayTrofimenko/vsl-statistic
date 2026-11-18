@@ -259,21 +259,24 @@ function hiringDetail(metricId: string, period: DashPeriod): DashDetail {
 /* ------------------------- Keitaro: buying profit ------------------------- */
 
 const KEITARO_TTL_MS = 10 * 60_000;
+/** Team HYD buys in the same Keitaro; its campaign groups stay out of Euphoria's buying numbers. */
+const HYDRA_GROUPS = new Set(['XNX', 'XP5', 'PNI', 'MEF', 'COIN']);
+const isHydra = (group: unknown): boolean => HYDRA_GROUPS.has(String(group ?? '').trim().toUpperCase());
 const keitaroCache = new Map<string, { at: number; rows: Record<string, unknown>[] }>();
 
 /** A Keitaro report over [from, to] (Moscow), cached for 10 minutes. */
-async function report(from: string, to: string, dimension: 'day' | 'campaign_group'): Promise<Record<string, unknown>[]> {
-  const key = `${dimension}:${from}:${to}`;
+async function report(from: string, to: string, dimensions: ('day' | 'campaign_group')[]): Promise<Record<string, unknown>[]> {
+  const key = `${dimensions.join('+')}:${from}:${to}`;
   const hit = keitaroCache.get(key);
   if (hit && Date.now() - hit.at < KEITARO_TTL_MS) return hit.rows;
   const res = await keitaroCall<{ rows?: Record<string, unknown>[] }>('/admin_api/v1/report/build', {
     range: { from: `${from} 00:00:00`, to: `${to} 23:59:59`, timezone: TZ },
-    dimensions: [dimension],
+    dimensions,
     // Approved only: 'revenue' would add the expected payout of pending leads.
     measures: ['sale_revenue', 'cost', 'sales', 'conversions'],
-    limit: 1000,
+    limit: 20000,
   });
-  const rows = res.rows ?? [];
+  const rows = (res.rows ?? []).filter((r) => !isHydra(r['campaign_group']));
   keitaroCache.set(key, { at: Date.now(), rows });
   return rows;
 }
@@ -292,7 +295,7 @@ async function profitMetric(periods: DashPeriod[]): Promise<DashMetric> {
   };
   if (!keitaroConfigured()) return { ...base, status: 'pending', source: 'Keitaro не настроен' };
   try {
-    const rows = await report(periods[0]!.from, periods.at(-1)!.to, 'day');
+    const rows = await report(periods[0]!.from, periods.at(-1)!.to, ['day', 'campaign_group']);
     const sum = (p: DashPeriod) => {
       let total = 0;
       for (const r of rows) {
@@ -321,7 +324,7 @@ interface BuyerMoney {
 
 async function moneyByBuyer(period: DashPeriod): Promise<Map<string, BuyerMoney>> {
   const out = new Map<string, BuyerMoney>();
-  for (const r of await report(period.from, period.to, 'campaign_group')) {
+  for (const r of await report(period.from, period.to, ['campaign_group'])) {
     const m = {
       revenue: Number(r['sale_revenue'] ?? 0),
       cost: Number(r['cost'] ?? 0),

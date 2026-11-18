@@ -45,7 +45,7 @@ export class ApiService {
 
   /** May this account open the page at `url`? Admin pages need the admin role. */
   canOpen(url: string): boolean {
-    if (/^\/(users|verticals|dashboard)(\/|\?|$)/.test(url)) return this.isAdmin();
+    if (/^\/(users|verticals|dashboard|apifb)(\/|\?|$)/.test(url)) return this.isAdmin();
     if (/^\/grants(\/|\?|$)/.test(url)) return this.canGrants();
     const section = SECTIONS.find((s) => url === s.path || url.startsWith(`${s.path}/`) || url.startsWith(`${s.path}?`));
     return !section || this.can(section.id);
@@ -73,6 +73,7 @@ export class ApiService {
   readonly domains = this.api.domains;
   readonly grants = this.api.grants;
   readonly dashboard = this.api.dashboard;
+  readonly apifb = this.api.apifb;
   readonly stats = this.api.stats;
 
   async refreshSession(): Promise<boolean> {

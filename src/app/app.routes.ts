@@ -105,6 +105,12 @@ export const routes: Routes = [
     title: 'Вертикали',
   },
   {
+    path: 'apifb',
+    canActivate: [adminOnly],
+    loadComponent: () => import('./pages/apifb/apifb').then((m) => m.ApifbPage),
+    title: 'Тест Facebook',
+  },
+  {
     path: 'offers',
     canActivate: [section('offers')],
     loadComponent: () => import('./pages/offers/offers').then((m) => m.OffersPage),

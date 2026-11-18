@@ -516,6 +516,42 @@ export interface CapInput {
   active: boolean;
 }
 
+/** One test event for Meta Conversions API (`apifb:send`). */
+export interface ApifbSendInput {
+  pixelId: string;
+  accessToken: string;
+  /** Lead, Purchase, … — whatever the pixel expects. */
+  eventName: string;
+  /** Events Manager → Test events; keeps the hit out of production stats. */
+  testEventCode?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  country?: string | null;
+  city?: string | null;
+  clientIp?: string | null;
+  userAgent?: string | null;
+  /** Keitaro click id / our external_id. */
+  externalId?: string | null;
+  /** fbclid or already-built `fb.…` cookie value. */
+  fbc?: string | null;
+  eventSourceUrl?: string | null;
+  value?: number | null;
+  currency?: string | null;
+}
+
+/** What Meta answered; token never comes back. */
+export interface ApifbSendResult {
+  ok: boolean;
+  eventsReceived: number | null;
+  fbtraceId: string | null;
+  messages: unknown[];
+  error: string | null;
+  /** Body we POSTed, without the access token. */
+  request: unknown;
+}
+
 /**
  * under — at this pace the day ends below 90% of the limit;
  * ok — on track; risk — at this pace the limit is exceeded; over — already exceeded.
@@ -961,6 +997,13 @@ export interface VslStatApi {
   history: {
     /** Every creative that ever entered the library, deleted ones included. */
     list(): Promise<HistoryEntry[]>;
+  };
+  /**
+   * Admin only: one-off Facebook Conversions API send to check the pixel
+   * chain (same job as Keitaro's `/apifb`, without writing tokens to a log).
+   */
+  apifb: {
+    send(input: ApifbSendInput): Promise<ApifbSendResult>;
   };
   tags: {
     /** Tags the viewer may see, with their owners. */
