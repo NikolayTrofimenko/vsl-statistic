@@ -108,7 +108,7 @@ export const routes: Routes = [
     path: 'apifb',
     canActivate: [adminOnly],
     loadComponent: () => import('./pages/apifb/apifb').then((m) => m.ApifbPage),
-    title: 'Тест Facebook',
+    title: 'Пиксель Facebook',
   },
   {
     path: 'notifications',

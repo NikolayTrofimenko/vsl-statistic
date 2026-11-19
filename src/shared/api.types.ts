@@ -561,6 +561,8 @@ export interface ApifbSendInput {
   eventSourceUrl?: string | null;
   value?: number | null;
   currency?: string | null;
+  /** Unix seconds from the dump; null → server uses now. */
+  eventTime?: number | null;
 }
 
 /** What Meta answered; token never comes back. */
@@ -572,6 +574,65 @@ export interface ApifbSendResult {
   error: string | null;
   /** Body we POSTed, without the access token. */
   request: unknown;
+}
+
+export interface ApifbVerticalInfo {
+  id: string;
+  label: string;
+}
+
+export interface ApifbGeoInfo {
+  id: string;
+  label: string;
+  region: string | null;
+  docId: string;
+}
+
+export interface ApifbPreview {
+  geoLabel: string;
+  docId: string;
+  count: number;
+  /** First few event names + phone/ip, no tokens. */
+  sample: string[];
+}
+
+/** One dump event without destination pixel/token (filled at send time). */
+export type ApifbEventPayload = Omit<ApifbSendInput, 'pixelId' | 'accessToken' | 'testEventCode'>;
+
+export interface ApifbLoadInput {
+  verticalId?: string | null;
+  geoId?: string | null;
+  rawText?: string | null;
+}
+
+export interface ApifbLoadResult {
+  geoLabel: string;
+  docId: string;
+  events: ApifbEventPayload[];
+}
+
+/** One Graph chunk (≤50 events). UI walks chunks for live progress. */
+export interface ApifbBatchInput {
+  pixelId: string;
+  accessToken: string;
+  events: ApifbEventPayload[];
+  testEventCode?: string | null;
+  /** For numbering errors across chunks. */
+  indexOffset?: number | null;
+}
+
+export interface ApifbBatchItemResult {
+  index: number;
+  ok: boolean;
+  eventName: string;
+  error: string | null;
+}
+
+export interface ApifbBatchResult {
+  total: number;
+  ok: number;
+  failed: number;
+  items: ApifbBatchItemResult[];
 }
 
 /**
@@ -1028,11 +1089,18 @@ export interface VslStatApi {
     list(): Promise<HistoryEntry[]>;
   };
   /**
-   * Admin only: one-off Facebook Conversions API send to check the pixel
-   * chain (same job as Keitaro's `/apifb`, without writing tokens to a log).
+   * Admin only: Facebook Conversions API — one-off test and batch replay
+   * from «Пиксельная» dumps (pixel+token replaced; same as Keitaro `/apifb`).
    */
   apifb: {
     send(input: ApifbSendInput): Promise<ApifbSendResult>;
+    verticals(): Promise<ApifbVerticalInfo[]>;
+    geos(verticalId: string): Promise<ApifbGeoInfo[]>;
+    preview(verticalId: string, geoId: string): Promise<ApifbPreview>;
+    /** Pull parsed events from the Doc / paste (no Meta call yet). */
+    load(input: ApifbLoadInput): Promise<ApifbLoadResult>;
+    /** Send ≤50 events in one Meta request. */
+    batch(input: ApifbBatchInput): Promise<ApifbBatchResult>;
   };
   tags: {
     /** Tags the viewer may see, with their owners. */

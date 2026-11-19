@@ -1,5 +1,4 @@
-import { JsonPipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,32 +7,81 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../core/services/api.service';
-import type { ApifbSendResult } from '../../../shared/api.types';
+import type {
+  ApifbBatchItemResult,
+  ApifbBatchResult,
+  ApifbEventPayload,
+  ApifbGeoInfo,
+  ApifbPreview,
+  ApifbVerticalInfo,
+} from '../../../shared/api.types';
 
-const EVENT_NAMES = ['Lead', 'Purchase', 'CompleteRegistration', 'AddToCart', 'ViewContent', 'InitiateCheckout'];
+/** Must match server `META_EVENT_CHUNK`. */
+const CHUNK = 50;
 
 /**
- * Admin-only: fire one Facebook Conversions API event to check that a pixel
- * and its token work. Same purpose as Keitaro's `/apifb/apifb.html`.
+ * Admin: replay APIFB dumps onto a new pixel — pick vertical + geo from
+ * «Пиксельная», paste pixel/token, send in Meta chunks with live progress.
  */
 @Component({
   selector: 'app-apifb',
-  imports: [FormsModule, JsonPipe, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule],
+  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule],
   template: `
     <header class="page-header">
       <div>
-        <h1>Тест Facebook</h1>
+        <h1>Пиксель Facebook</h1>
         <p>
-          Разовая отправка события в Meta Conversions API — проверка цепочки пиксель → токен.
-          Нужен хотя бы один идентификатор: email, телефон, IP+User-Agent, fbclid или external id.
-          С test event code попадание видно во вкладке Test events у пикселя. Токен в логи не
-          пишется.
+          Берём выгрузку из дока по направлению и гео (таблица «Пиксельная»), подставляем новый Pixel ID и
+          access token, прогоняем в Meta пачками по {{ chunkSize }} — как коллеги через
+          <code>/apifb</code>. Токен в логи не пишется.
         </p>
       </div>
     </header>
 
-    <form class="form" (ngSubmit)="send()">
-      <div class="row required">
+    <form class="form" (ngSubmit)="run()">
+      <div class="row">
+        <mat-form-field>
+          <mat-label>Направление</mat-label>
+          <mat-select name="verticalId" [(ngModel)]="verticalId" (ngModelChange)="onVerticalChange()">
+            @for (v of verticals(); track v.id) {
+              <mat-option [value]="v.id">{{ v.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Гео</mat-label>
+          <mat-select name="geoId" [(ngModel)]="geoId" (ngModelChange)="onGeoChange()" [disabled]="!geos().length">
+            @for (g of geos(); track g.id) {
+              <mat-option [value]="g.id">
+                @if (g.region) {
+                  {{ g.region }} ·
+                }
+                {{ g.label }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <button mat-stroked-button type="button" (click)="loadPreview()" [disabled]="!canPreview() || loading()">
+          <mat-icon>description</mat-icon>
+          <span>{{ loading() ? 'Читаю…' : 'Загрузить док' }}</span>
+        </button>
+      </div>
+
+      @if (preview(); as p) {
+        <div class="preview">
+          <b>{{ p.count }}</b> событий · {{ p.geoLabel }}
+          <span class="faint">· doc {{ p.docId }}</span>
+          @if (p.sample.length) {
+            <ul>
+              @for (s of p.sample; track s) {
+                <li>{{ s }}</li>
+              }
+            </ul>
+          }
+        </div>
+      }
+
+      <div class="row">
         <mat-form-field>
           <mat-label>Pixel ID</mat-label>
           <input matInput name="pixelId" [(ngModel)]="pixelId" autocomplete="off" inputmode="numeric" />
@@ -42,126 +90,50 @@ const EVENT_NAMES = ['Lead', 'Purchase', 'CompleteRegistration', 'AddToCart', 'V
           <mat-label>Access token</mat-label>
           <input matInput name="accessToken" [(ngModel)]="accessToken" type="password" autocomplete="off" />
         </mat-form-field>
-      </div>
-
-      <div class="row">
-        <mat-form-field>
-          <mat-label>Событие</mat-label>
-          <mat-select name="eventName" [(ngModel)]="eventName">
-            @for (n of eventNames; track n) {
-              <mat-option [value]="n">{{ n }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
         <mat-form-field>
           <mat-label>Test event code</mat-label>
-          <input
-            matInput
-            name="testEventCode"
-            [(ngModel)]="testEventCode"
-            autocomplete="off"
-            placeholder="из Events Manager → Test events"
-          />
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Value</mat-label>
-          <input matInput name="value" [(ngModel)]="value" type="number" step="any" />
-        </mat-form-field>
-        <mat-form-field class="currency">
-          <mat-label>Currency</mat-label>
-          <input matInput name="currency" [(ngModel)]="currency" maxlength="3" />
+          <input matInput name="testEventCode" [(ngModel)]="testEventCode" autocomplete="off" placeholder="опционально" />
         </mat-form-field>
       </div>
 
-      <details class="extra" open>
-        <summary>Данные пользователя (опционально)</summary>
-        <div class="row">
-          <mat-form-field>
-            <mat-label>Email</mat-label>
-            <input matInput name="email" [(ngModel)]="email" autocomplete="off" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Телефон</mat-label>
-            <input matInput name="phone" [(ngModel)]="phone" autocomplete="off" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Имя</mat-label>
-            <input matInput name="firstName" [(ngModel)]="firstName" autocomplete="off" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Фамилия</mat-label>
-            <input matInput name="lastName" [(ngModel)]="lastName" autocomplete="off" />
-          </mat-form-field>
-        </div>
-        <div class="row">
-          <mat-form-field>
-            <mat-label>Страна (ISO, например in)</mat-label>
-            <input matInput name="country" [(ngModel)]="country" maxlength="2" autocomplete="off" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Город</mat-label>
-            <input matInput name="city" [(ngModel)]="city" autocomplete="off" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>External ID / clickid</mat-label>
-            <input matInput name="externalId" [(ngModel)]="externalId" autocomplete="off" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>fbclid / fbc</mat-label>
-            <input matInput name="fbc" [(ngModel)]="fbc" autocomplete="off" />
-          </mat-form-field>
-        </div>
-        <div class="row">
-          <mat-form-field>
-            <mat-label>Client IP</mat-label>
-            <input
-              matInput
-              name="clientIp"
-              [(ngModel)]="clientIp"
-              autocomplete="off"
-              placeholder="нужен вместе с User-Agent"
-            />
-          </mat-form-field>
-          <mat-form-field class="wide">
-            <mat-label>User-Agent</mat-label>
-            <input matInput name="userAgent" [(ngModel)]="userAgent" autocomplete="off" />
-          </mat-form-field>
-          <mat-form-field class="wide">
-            <mat-label>Event source URL</mat-label>
-            <input matInput name="eventSourceUrl" [(ngModel)]="eventSourceUrl" autocomplete="off" />
-          </mat-form-field>
-        </div>
+      <details class="extra">
+        <summary>Или вставить строки вручную (вместо дока)</summary>
+        <mat-form-field class="raw">
+          <mat-label>Строки APIFB</mat-label>
+          <textarea
+            matInput
+            name="rawText"
+            [(ngModel)]="rawText"
+            rows="6"
+            placeholder="Purchase#ip#ua#name#phone#…"
+          ></textarea>
+        </mat-form-field>
       </details>
 
       <div class="actions">
-        <button
-          mat-flat-button
-          color="primary"
-          type="submit"
-          [disabled]="busy() || !pixelId().trim() || !accessToken().trim()"
-        >
+        <button mat-flat-button color="primary" type="submit" [disabled]="!canRun() || busy()">
           <mat-icon>send</mat-icon>
-          <span>{{ busy() ? 'Отправляю…' : 'Отправить тест' }}</span>
+          <span>{{ busy() ? progressLabel() : 'Отправить на пиксель' }}</span>
         </button>
       </div>
     </form>
 
     @if (result(); as r) {
-      <section class="result" [class.ok]="r.ok" [class.fail]="!r.ok">
-        <h2>{{ r.ok ? 'Meta приняла событие' : 'Ошибка' }}</h2>
-        @if (r.ok) {
-          <p>
-            events_received: <code>{{ r.eventsReceived ?? '—' }}</code>
-            · fbtrace_id: <code>{{ r.fbtraceId ?? '—' }}</code>
-          </p>
-        } @else {
-          <p class="err">{{ r.error }}</p>
+      <section class="result" [class.ok]="r.failed === 0" [class.fail]="r.failed > 0">
+        <h2>
+          Готово: {{ r.ok }} ok
+          @if (r.failed) {
+            , {{ r.failed }} ошибок
+          }
+          из {{ r.total }}
+        </h2>
+        @if (r.failed) {
+          <ul class="errors">
+            @for (item of failedItems(); track item.index) {
+              <li>#{{ item.index + 1 }} {{ item.eventName }} — {{ item.error }}</li>
+            }
+          </ul>
         }
-        @if (r.messages.length) {
-          <pre>{{ r.messages | json }}</pre>
-        }
-        <h3>Что ушло (токен скрыт)</h3>
-        <pre>{{ r.request | json }}</pre>
       </section>
     }
   `,
@@ -184,6 +156,7 @@ const EVENT_NAMES = ['Lead', 'Purchase', 'CompleteRegistration', 'AddToCart', 'V
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
+        align-items: flex-start;
       }
       .row mat-form-field {
         flex: 1 1 180px;
@@ -192,12 +165,26 @@ const EVENT_NAMES = ['Lead', 'Purchase', 'CompleteRegistration', 'AddToCart', 'V
       .row .token {
         flex: 2 1 280px;
       }
-      .row .wide {
-        flex: 2 1 280px;
+      .row button {
+        margin-top: 4px;
       }
-      .row .currency {
-        flex: 0 1 100px;
-        min-width: 90px;
+      .preview {
+        margin: 4px 0 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        background: var(--bg, transparent);
+        border-radius: 6px;
+        border: 1px dashed var(--divider);
+      }
+      .preview ul {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        color: var(--text-muted, inherit);
+      }
+      .faint {
+        opacity: 0.65;
+        font-family: var(--font-mono, monospace);
+        font-size: 11px;
       }
       .extra {
         margin: 8px 0 4px;
@@ -211,10 +198,13 @@ const EVENT_NAMES = ['Lead', 'Purchase', 'CompleteRegistration', 'AddToCart', 'V
         margin-bottom: 8px;
         user-select: none;
       }
+      .raw {
+        width: 100%;
+      }
       .actions {
         display: flex;
         gap: 8px;
-        margin-top: 4px;
+        margin-top: 8px;
       }
       .actions button mat-icon {
         margin-right: 4px;
@@ -236,95 +226,170 @@ const EVENT_NAMES = ['Lead', 'Purchase', 'CompleteRegistration', 'AddToCart', 'V
         margin: 0 0 8px;
         font-size: 16px;
       }
-      .result h3 {
-        margin: 16px 0 6px;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--text-muted, inherit);
-      }
-      .result p {
+      .errors {
         margin: 0;
+        padding-left: 18px;
         font-size: 13px;
-      }
-      .result .err {
         color: #c62828;
-      }
-      .result pre {
-        margin: 8px 0 0;
-        padding: 10px 12px;
-        font-size: 12px;
-        line-height: 1.45;
+        max-height: 240px;
         overflow: auto;
-        background: var(--bg, #111);
-        border-radius: 6px;
-        max-height: 360px;
       }
-      .result code {
+      code {
         font-family: var(--font-mono, monospace);
         font-size: 12px;
       }
     `,
   ],
 })
-export class ApifbPage {
+export class ApifbPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly snack = inject(MatSnackBar);
 
-  readonly eventNames = EVENT_NAMES;
+  readonly chunkSize = CHUNK;
 
-  /** Sample technical fields for a test send; pixel/token/name stay empty. */
+  readonly verticals = signal<ApifbVerticalInfo[]>([]);
+  readonly geos = signal<ApifbGeoInfo[]>([]);
+  readonly preview = signal<ApifbPreview | null>(null);
+  readonly result = signal<ApifbBatchResult | null>(null);
+  private loadedEvents: ApifbEventPayload[] | null = null;
+
+  readonly verticalId = signal('');
+  readonly geoId = signal('');
   readonly pixelId = signal('');
   readonly accessToken = signal('');
-  readonly eventName = signal('Purchase');
   readonly testEventCode = signal('');
-  readonly email = signal('');
-  readonly phone = signal('');
-  readonly firstName = signal('');
-  readonly lastName = signal('');
-  readonly country = signal('PT');
-  readonly city = signal('Aveiro');
-  readonly clientIp = signal('94.132.42.187');
-  readonly userAgent = signal(
-    'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/29.0 Chrome/136.0.0.0 Mobile Safari/537.36',
-  );
-  readonly externalId = signal('0161fe1c-bbef-413c-82f1-61b265d5dea3');
-  readonly fbc = signal('');
-  readonly eventSourceUrl = signal('https://www.facebook.com');
-  readonly value = signal<number | null>(37);
-  readonly currency = signal('USD');
+  readonly rawText = signal('');
 
+  readonly loading = signal(false);
   readonly busy = signal(false);
-  readonly result = signal<ApifbSendResult | null>(null);
+  readonly sent = signal(0);
+  readonly totalHint = signal(0);
 
-  async send(): Promise<void> {
-    if (this.busy()) return;
+  readonly failedItems = computed(() => (this.result()?.items ?? []).filter((i) => !i.ok).slice(0, 50));
+
+  async ngOnInit(): Promise<void> {
+    try {
+      const list = await this.api.apifb.verticals();
+      this.verticals.set(list);
+      if (list[0]) {
+        this.verticalId.set(list[0].id);
+        await this.onVerticalChange();
+      }
+    } catch (err) {
+      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 5000 });
+    }
+  }
+
+  canPreview(): boolean {
+    return Boolean(this.verticalId() && this.geoId()) || Boolean(this.rawText().trim());
+  }
+
+  canRun(): boolean {
+    if (!this.pixelId().trim() || !this.accessToken().trim()) return false;
+    return Boolean(this.rawText().trim()) || Boolean(this.preview()) || Boolean(this.verticalId() && this.geoId());
+  }
+
+  progressLabel(): string {
+    const t = this.totalHint();
+    const s = this.sent();
+    return t ? `Отправляю… ${s}/${t}` : 'Отправляю…';
+  }
+
+  async onVerticalChange(): Promise<void> {
+    this.geoId.set('');
+    this.preview.set(null);
+    this.result.set(null);
+    this.loadedEvents = null;
+    this.geos.set([]);
+    const id = this.verticalId();
+    if (!id) return;
+    this.loading.set(true);
+    try {
+      this.geos.set(await this.api.apifb.geos(id));
+    } catch (err) {
+      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 6000 });
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  onGeoChange(): void {
+    this.preview.set(null);
+    this.result.set(null);
+    this.loadedEvents = null;
+  }
+
+  async loadPreview(): Promise<void> {
+    this.loading.set(true);
+    this.preview.set(null);
+    this.loadedEvents = null;
+    try {
+      const raw = this.rawText().trim();
+      const loaded = await this.api.apifb.load(
+        raw ? { rawText: raw } : { verticalId: this.verticalId(), geoId: this.geoId() },
+      );
+      this.loadedEvents = loaded.events;
+      this.preview.set({
+        geoLabel: loaded.geoLabel,
+        docId: loaded.docId,
+        count: loaded.events.length,
+        sample: loaded.events
+          .slice(0, 5)
+          .map((e) => [e.eventName, e.phone || e.clientIp || e.externalId || '—'].join(' · ')),
+      });
+    } catch (err) {
+      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 6000 });
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async run(): Promise<void> {
+    if (this.busy() || !this.canRun()) return;
     this.busy.set(true);
     this.result.set(null);
+    this.sent.set(0);
+
     try {
-      const r = await this.api.apifb.send({
-        pixelId: this.pixelId().trim(),
-        accessToken: this.accessToken().trim(),
-        eventName: this.eventName().trim() || 'Lead',
-        testEventCode: this.testEventCode().trim() || null,
-        email: this.email().trim() || null,
-        phone: this.phone().trim() || null,
-        firstName: this.firstName().trim() || null,
-        lastName: this.lastName().trim() || null,
-        country: this.country().trim() || null,
-        city: this.city().trim() || null,
-        clientIp: this.clientIp().trim() || null,
-        userAgent: this.userAgent().trim() || null,
-        externalId: this.externalId().trim() || null,
-        fbc: this.fbc().trim() || null,
-        eventSourceUrl: this.eventSourceUrl().trim() || null,
-        value: this.value(),
-        currency: this.currency().trim() || null,
-      });
-      this.result.set(r);
-      this.snack.open(r.ok ? 'Событие отправлено' : r.error || 'Ошибка Meta', 'OK', { duration: 4000 });
+      if (!this.loadedEvents?.length) {
+        await this.loadPreview();
+      }
+      const events = this.loadedEvents;
+      if (!events?.length) throw new Error('Нет событий для отправки.');
+
+      this.totalHint.set(events.length);
+      const pixelId = this.pixelId().trim();
+      const accessToken = this.accessToken().trim();
+      const testEventCode = this.testEventCode().trim() || null;
+
+      let ok = 0;
+      let failed = 0;
+      const items: ApifbBatchItemResult[] = [];
+
+      for (let offset = 0; offset < events.length; offset += CHUNK) {
+        const chunk = events.slice(offset, offset + CHUNK);
+        const part = await this.api.apifb.batch({
+          pixelId,
+          accessToken,
+          testEventCode,
+          events: chunk,
+          indexOffset: offset,
+        });
+        ok += part.ok;
+        failed += part.failed;
+        items.push(...part.items);
+        this.sent.set(Math.min(offset + chunk.length, events.length));
+      }
+
+      const summary: ApifbBatchResult = { total: events.length, ok, failed, items };
+      this.result.set(summary);
+      this.snack.open(
+        failed ? `Готово с ошибками: ${ok}/${events.length}` : `Отправлено ${ok} событий`,
+        'OK',
+        { duration: 5000 },
+      );
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.snack.open(message, 'OK', { duration: 5000 });
+      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 6000 });
     } finally {
       this.busy.set(false);
     }

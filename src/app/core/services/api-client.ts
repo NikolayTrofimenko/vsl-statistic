@@ -263,6 +263,11 @@ export function createHttpApi(options: HttpApiOptions = {}): VslStatApi {
 
     apifb: {
       send: (input) => rpc('apifb:send', input),
+      verticals: () => rpc('apifb:verticals'),
+      geos: (verticalId) => rpc('apifb:geos', verticalId),
+      preview: (verticalId, geoId) => rpc('apifb:preview', verticalId, geoId),
+      load: (input) => rpc('apifb:load', input),
+      batch: (input) => rpc('apifb:batch', input),
     },
 
     tags: {
