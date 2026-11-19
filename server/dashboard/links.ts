@@ -117,14 +117,23 @@ export const LINK_METRICS: LinkMetricDef[] = [
   },
   { id: 'buying.startedScaling', label: 'Связок начали масштабировать', block: 'buying', split: 'buyer', flow: (l, p) => inside(l.scaled, p) },
   { id: 'buying.scaling', label: 'Всего масштабируемых связок', block: 'buying', split: 'buyer', snapshot: scalingAt },
-  // Offer requests: counted when the card first lands in «Новые офферы на тест» (Илья, 16.11).
+  // Offer requests (19.11): proposed = first lands in «Новые офферы на тест»;
+  // tested = gets past «В тесте» to a verdict; scaled = first reaches «Масштабирую».
+  {
+    id: 'marketing.proposed',
+    label: 'Новых предложенных офферов',
+    block: 'marketing',
+    type: TYPE.offerRequest,
+    split: 'team',
+    flow: (l, p) => inside(l.newOffer, p),
+  },
   {
     id: 'marketing.tested',
     label: 'Новых протестированных офферов',
     block: 'marketing',
     type: TYPE.offerRequest,
     split: 'team',
-    flow: (l, p) => inside(l.newOffer, p),
+    flow: (l, p) => inside(l.tested, p),
   },
   {
     id: 'marketing.scaled',

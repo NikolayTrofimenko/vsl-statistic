@@ -428,6 +428,7 @@ export async function dashboard(kind: DashPeriodKind, anchor: string | null): Pr
       metrics: links
         ? linkMetrics(links, periods, 'marketing')
         : [
+            pending('marketing.proposed', 'Новых предложенных офферов', 'Kaiten не настроен'),
             pending('marketing.tested', 'Новых протестированных офферов', 'Kaiten не настроен'),
             pending('marketing.scaled', 'Новых офферов передано в масштабирование', 'Kaiten не настроен'),
           ],
