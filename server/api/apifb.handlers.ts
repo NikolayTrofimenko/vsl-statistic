@@ -1,6 +1,6 @@
 import { handle } from './rpc';
 import { loadEvents, previewApifbDoc, runApifbBatch } from '../apifb/batch';
-import { APIFB_VERTICALS, listApifbGeos } from '../apifb/catalog';
+import { invalidateApifbCatalog, listApifbGeos, listApifbVerticals } from '../apifb/catalog';
 import { sendApifbEvent } from '../apifb/send';
 import type {
   ApifbBatchInput,
@@ -17,12 +17,13 @@ import type {
 /** Admin only — `apifb:*` in `channelAccess()`. */
 export function registerApifbHandlers(): void {
   handle('apifb:send', (input: ApifbSendInput): Promise<ApifbSendResult> => sendApifbEvent(input));
-  handle(
-    'apifb:verticals',
-    (): ApifbVerticalInfo[] => APIFB_VERTICALS.map(({ id, label }) => ({ id, label })),
-  );
-  handle('apifb:geos', async (verticalId: string): Promise<ApifbGeoInfo[]> => {
-    const geos = await listApifbGeos(String(verticalId ?? ''));
+  handle('apifb:verticals', async (fresh?: boolean): Promise<ApifbVerticalInfo[]> => {
+    if (fresh) invalidateApifbCatalog();
+    const list = await listApifbVerticals(Boolean(fresh));
+    return list.map(({ id, label }) => ({ id, label }));
+  });
+  handle('apifb:geos', async (verticalId: string, fresh?: boolean): Promise<ApifbGeoInfo[]> => {
+    const geos = await listApifbGeos(String(verticalId ?? ''), Boolean(fresh));
     return geos.map(({ id, label, region, docId }) => ({ id, label, region, docId }));
   });
   handle(

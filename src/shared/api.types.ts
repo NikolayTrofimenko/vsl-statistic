@@ -1094,8 +1094,9 @@ export interface VslStatApi {
    */
   apifb: {
     send(input: ApifbSendInput): Promise<ApifbSendResult>;
-    verticals(): Promise<ApifbVerticalInfo[]>;
-    geos(verticalId: string): Promise<ApifbGeoInfo[]>;
+    /** Sheet tabs of «Пиксельная»; `fresh` bypasses the short server cache. */
+    verticals(fresh?: boolean): Promise<ApifbVerticalInfo[]>;
+    geos(verticalId: string, fresh?: boolean): Promise<ApifbGeoInfo[]>;
     preview(verticalId: string, geoId: string): Promise<ApifbPreview>;
     /** Pull parsed events from the Doc / paste (no Meta call yet). */
     load(input: ApifbLoadInput): Promise<ApifbLoadResult>;

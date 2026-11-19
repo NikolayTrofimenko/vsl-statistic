@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../core/services/api.service';
 import type {
   ApifbBatchItemResult,
@@ -25,7 +26,15 @@ const CHUNK = 50;
  */
 @Component({
   selector: 'app-apifb',
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule],
+  imports: [
+    FormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    MatTooltipModule,
+  ],
   template: `
     <header class="page-header">
       <div>
@@ -33,7 +42,8 @@ const CHUNK = 50;
         <p>
           Берём выгрузку из дока по направлению и гео (таблица «Пиксельная»), подставляем новый Pixel ID и
           access token, прогоняем в Meta пачками по {{ chunkSize }} — как коллеги через
-          <code>/apifb</code>. Токен в логи не пишется.
+          <code>/apifb</code>. Новые листы и гео подтягиваются кнопкой «Обновить из Google». Токен в логи не
+          пишется.
         </p>
       </div>
     </header>
@@ -61,6 +71,16 @@ const CHUNK = 50;
             }
           </mat-select>
         </mat-form-field>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="refreshCatalog()"
+          [disabled]="loading()"
+          matTooltip="Перечитать вкладки и гео из таблицы «Пиксельная»"
+        >
+          <mat-icon>sync</mat-icon>
+          <span>{{ loading() ? 'Обновляю…' : 'Обновить из Google' }}</span>
+        </button>
         <button mat-stroked-button type="button" (click)="loadPreview()" [disabled]="!canPreview() || loading()">
           <mat-icon>description</mat-icon>
           <span>{{ loading() ? 'Читаю…' : 'Загрузить док' }}</span>
@@ -268,15 +288,37 @@ export class ApifbPage implements OnInit {
   readonly failedItems = computed(() => (this.result()?.items ?? []).filter((i) => !i.ok).slice(0, 50));
 
   async ngOnInit(): Promise<void> {
+    await this.reloadVerticals(false);
+  }
+
+  /** Re-read sheet tabs + geos from «Пиксельная». */
+  async refreshCatalog(): Promise<void> {
+    const keep = this.verticalId();
+    await this.reloadVerticals(true, keep);
+    this.snack.open('Каталог обновлён из Google', 'OK', { duration: 3000 });
+  }
+
+  private async reloadVerticals(fresh: boolean, preferId?: string): Promise<void> {
+    this.loading.set(true);
+    this.preview.set(null);
+    this.loadedEvents = null;
+    this.result.set(null);
     try {
-      const list = await this.api.apifb.verticals();
+      const list = await this.api.apifb.verticals(fresh);
       this.verticals.set(list);
-      if (list[0]) {
-        this.verticalId.set(list[0].id);
-        await this.onVerticalChange();
+      const next = (preferId && list.some((v) => v.id === preferId) ? preferId : null) || list[0]?.id || '';
+      this.verticalId.set(next);
+      if (next) {
+        this.geos.set(await this.api.apifb.geos(next, fresh));
+        this.geoId.set('');
+      } else {
+        this.geos.set([]);
+        this.geoId.set('');
       }
     } catch (err) {
-      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 5000 });
+      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 6000 });
+    } finally {
+      this.loading.set(false);
     }
   }
 
@@ -305,7 +347,7 @@ export class ApifbPage implements OnInit {
     if (!id) return;
     this.loading.set(true);
     try {
-      this.geos.set(await this.api.apifb.geos(id));
+      this.geos.set(await this.api.apifb.geos(id, false));
     } catch (err) {
       this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 6000 });
     } finally {
