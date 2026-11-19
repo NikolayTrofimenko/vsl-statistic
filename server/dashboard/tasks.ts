@@ -25,9 +25,8 @@ export const TASK_METRICS: TaskMetricDef[] = [
   {
     id: 'analytics.tech',
     label: 'Технических задач выполнено',
-    source: 'Kaiten · IT отдел',
+    source: 'Kaiten · IT отдел · Автоматизация',
     boards: [
-      { id: 1856420, title: 'Проблемы', done: 6418665 },
       { id: 1857364, title: 'Автоматизация', done: 6422386 },
     ],
   },
