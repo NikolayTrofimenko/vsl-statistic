@@ -429,6 +429,11 @@ function readStored(key: string): string | null {
         background: linear-gradient(135deg, transparent 50%, var(--divider-strong) 50%, var(--divider-strong) 60%, transparent 60%, transparent 72%, var(--divider-strong) 72%, var(--divider-strong) 82%, transparent 82%);
         touch-action: none;
       }
+      .tile.resizing {
+        z-index: 5;
+        outline: 2px dashed var(--accent-border);
+        background: var(--surface-3);
+      }
       .tile.cdk-drag-preview {
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
       }
@@ -782,27 +787,49 @@ export class DashboardPage implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Pull the corner: the tile follows the pointer pixel by pixel (over its
+   * neighbours), and on release snaps to whole grid cells. Cell size is taken
+   * from the tile itself — rows grow with content, so a fixed 150px was wrong.
+   */
   startResize(e: PointerEvent, tab: string, id: string, tile: HTMLElement): void {
     e.preventDefault();
     e.stopPropagation();
-    const grid = tile.parentElement!;
-    const style = getComputedStyle(grid);
-    const cols = style.gridTemplateColumns.split(' ').filter(Boolean);
-    const gap = parseFloat(style.columnGap) || 12;
-    const colW = parseFloat(cols[0] ?? '220') + gap;
-    const rowH = 150 + (parseFloat(style.rowGap) || 12);
+    const style = getComputedStyle(tile.parentElement!);
+    const cols = style.gridTemplateColumns.split(' ').filter(Boolean).length;
+    const colGap = parseFloat(style.columnGap) || 12;
+    const rowGap = parseFloat(style.rowGap) || 12;
+    const cur = this.sizeOf(tab, id);
     const rect = tile.getBoundingClientRect();
+    const colUnit = (rect.width + colGap) / cur.w;
+    const rowUnit = (rect.height + rowGap) / cur.h;
     const start = { x: e.clientX, y: e.clientY };
     const clamp = (n: number, max: number) => Math.max(1, Math.min(max, n));
+    let width = rect.width;
+    let height = rect.height;
+    tile.classList.add('resizing');
     const move = (ev: PointerEvent) => {
-      const w = clamp(Math.round((rect.width + ev.clientX - start.x + gap) / colW), cols.length);
-      const h = clamp(Math.round((rect.height + ev.clientY - start.y + gap) / rowH), 4);
-      const cur = this.sizeOf(tab, id);
-      if (cur.w !== w || cur.h !== h) this.saveLayout(tab, (l) => ({ ...l, size: { ...l.size, [id]: { w, h } } }));
+      width = Math.max(colUnit - colGap, rect.width + ev.clientX - start.x);
+      height = Math.max(rowUnit * 0.6, rect.height + ev.clientY - start.y);
+      tile.style.width = `${width}px`;
+      tile.style.height = `${height}px`;
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      tile.classList.remove('resizing');
+      tile.style.width = '';
+      tile.style.height = '';
+      const w = clamp(Math.round((width + colGap) / colUnit), cols);
+      const h = clamp(Math.round((height + rowGap) / rowUnit), 4);
+      if (w !== cur.w || h !== cur.h) {
+        this.saveLayout(tab, (l) => {
+          const size = { ...l.size };
+          if (w === 1 && h === 1) delete size[id];
+          else size[id] = { w, h };
+          return { ...l, size };
+        });
+      }
       this.swallowClick();
     };
     window.addEventListener('pointermove', move);
