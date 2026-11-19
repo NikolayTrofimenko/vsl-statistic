@@ -7,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../core/services/api.service';
 import { countryName } from '../../../shared/geo';
@@ -16,7 +17,7 @@ import type { Offer } from '../../../shared/api.types';
 /** Офферы: the hand-kept registry. Everyone with the section reads; `offersEdit` adds and changes. */
 @Component({
   selector: 'app-offers',
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule, MatAutocompleteModule],
   template: `
     <header class="page-header">
       <div>
@@ -33,18 +34,28 @@ import type { Offer } from '../../../shared/api.types';
     } @else {
       <div class="toolbar">
         <input class="search" type="search" placeholder="Поиск: название, ПП, бриф" [ngModel]="query()" (ngModelChange)="query.set($event)" />
-        <select [ngModel]="vertical()" (ngModelChange)="vertical.set($event)">
-          <option value="">Все вертикали</option>
-          @for (v of verticals(); track v) {
-            <option [value]="v">{{ v }}</option>
+        <div class="pick">
+          <input placeholder="Все вертикали" [ngModel]="vertical()" (ngModelChange)="vertical.set($event)" [matAutocomplete]="vAuto" />
+          @if (vertical()) {
+            <button class="clear" type="button" aria-label="Сбросить" (click)="vertical.set('')"><mat-icon>close</mat-icon></button>
           }
-        </select>
-        <select [ngModel]="geo()" (ngModelChange)="geo.set($event)">
-          <option value="">Все гео</option>
-          @for (g of geos(); track g) {
-            <option [value]="g">{{ g }} · {{ country(g) }}</option>
+          <mat-autocomplete #vAuto="matAutocomplete" class="geo-panel" [hideSingleSelectionIndicator]="true">
+            @for (v of verticalOptions(); track v) {
+              <mat-option [value]="v">{{ v }}</mat-option>
+            }
+          </mat-autocomplete>
+        </div>
+        <div class="pick">
+          <input placeholder="Все гео" [ngModel]="geo()" (ngModelChange)="geo.set($event)" [matAutocomplete]="gAuto" />
+          @if (geo()) {
+            <button class="clear" type="button" aria-label="Сбросить" (click)="geo.set('')"><mat-icon>close</mat-icon></button>
           }
-        </select>
+          <mat-autocomplete #gAuto="matAutocomplete" class="geo-panel" [hideSingleSelectionIndicator]="true">
+            @for (g of geoOptions(); track g) {
+              <mat-option [value]="g"><b>{{ g }}</b> · {{ country(g) }}</mat-option>
+            }
+          </mat-autocomplete>
+        </div>
         <label class="check">
           <input type="checkbox" [ngModel]="showOff()" (ngModelChange)="showOff.set($event)" />
           выключенные ({{ offCount() }})
@@ -138,6 +149,38 @@ import type { Offer } from '../../../shared/api.types';
         color: var(--text);
         font: inherit;
         font-size: 13px;
+      }
+      .pick {
+        position: relative;
+        width: 190px;
+      }
+      .pick input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 30px 8px 12px;
+        border: 1px solid var(--divider-strong);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+      }
+      .pick .clear {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        padding: 2px;
+        border: 0;
+        background: none;
+        color: var(--text-faint);
+        cursor: pointer;
+      }
+      .pick .clear mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
       .search {
         flex: 1;
@@ -262,6 +305,12 @@ export class OffersPage implements OnInit {
   /** Library verticals plus whatever offers already carry — the filter and the form share it. */
   readonly verticals = computed(() => uniq([...this.libraryVerticals(), ...this.offers().map((o) => o.vertical)]));
   readonly geos = computed(() => uniq(this.offers().map((o) => o.geo)));
+  /** What is typed narrows the suggestions; an exact pick filters exactly. */
+  readonly verticalOptions = computed(() => {
+    const q = this.vertical().trim().toLowerCase();
+    return q ? this.verticals().filter((v) => v.toLowerCase().includes(q)) : this.verticals();
+  });
+  readonly geoOptions = computed(() => this.geos().filter((g) => this.geoMatches(g, this.geo())));
   readonly offCount = computed(() => this.offers().filter((o) => !o.active).length);
 
   readonly rows = computed(() => {
@@ -269,11 +318,21 @@ export class OffersPage implements OnInit {
     return this.offers().filter(
       (o) =>
         (this.showOff() || o.active) &&
-        (!this.vertical() || o.vertical === this.vertical()) &&
-        (!this.geo() || o.geo === this.geo()) &&
+        (!this.vertical().trim() || o.vertical.toLowerCase().includes(this.vertical().trim().toLowerCase())) &&
+        (!this.geo().trim() || this.geoMatches(o.geo, this.geo())) &&
         (!q || `${o.name} ${o.partner} ${o.brief} ${o.vertical}`.toLowerCase().includes(q)),
     );
   });
+
+  /** "ES" — that code only; "e" — codes starting with it; "исп" — country names containing it. */
+  private geoMatches(code: string, typed: string): boolean {
+    const q = typed.trim().toLowerCase();
+    if (!q) return true;
+    if (!code) return false;
+    const c = code.toLowerCase();
+    if (q.length === 2 && /^[a-z]{2}$/.test(q) && this.geos().some((g) => g.toLowerCase() === q)) return c === q;
+    return c.startsWith(q) || countryName(code).toLowerCase().includes(q);
+  }
 
   async ngOnInit(): Promise<void> {
     await this.reload();
