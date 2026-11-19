@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { ApiService } from '../../core/services/api.service';
 import { COUNTRIES, countryName } from '../../../shared/geo';
 import { OFFER_CURRENCIES } from '../../../shared/offers';
@@ -154,7 +155,7 @@ export interface OfferEditData {
 /** Add or change an offer (section offersEdit). */
 @Component({
   selector: 'app-offer-edit',
-  imports: [FormsModule, MatDialogModule, MatButtonModule, MatIconModule],
+  imports: [FormsModule, MatDialogModule, MatButtonModule, MatIconModule, MatAutocompleteModule],
   template: `
     <h2 mat-dialog-title>{{ data.offer ? 'Изменить оффер' : data.copyFrom ? 'Копия оффера' : 'Новый оффер' }}</h2>
     <mat-dialog-content>
@@ -186,12 +187,18 @@ export interface OfferEditData {
           </label>
           <label>
             <span>Гео</span>
-            <input [(ngModel)]="f.geo" list="offer-geos" maxlength="40" placeholder="Впиши код или страну: ES" (blur)="fixGeo()" />
-            <datalist id="offer-geos">
-              @for (c of countries; track c[0]) {
-                <option [value]="c[0]">{{ c[1] }}</option>
+            <input
+              [(ngModel)]="f.geo"
+              [matAutocomplete]="geoAuto"
+              maxlength="40"
+              placeholder="Впиши код или страну: ES"
+              (blur)="fixGeo()"
+            />
+            <mat-autocomplete #geoAuto="matAutocomplete" class="geo-panel" [hideSingleSelectionIndicator]="true">
+              @for (c of geoOptions(); track c[0]) {
+                <mat-option [value]="c[0]"><b>{{ c[0] }}</b> · {{ c[1] }}</mat-option>
               }
-            </datalist>
+            </mat-autocomplete>
           </label>
           <label>
             <span>ПП (партнёрка)</span>
@@ -395,6 +402,15 @@ export class OfferEditDialog {
 
   private photo: File | null = null;
   readonly preview = signal<string | null>(this.data.offer?.photoUrl ?? this.data.copyFrom?.photoUrl ?? null);
+
+  /** Suggestions for what is typed: codes that start with it first, then country names containing it. */
+  geoOptions(): [string, string][] {
+    const q = (this.f.geo ?? '').trim().toLowerCase();
+    if (!q) return this.countries;
+    const byCode = this.countries.filter(([code]) => code.toLowerCase().startsWith(q));
+    const byName = this.countries.filter(([code, name]) => !byCode.some(([c]) => c === code) && name.toLowerCase().includes(q));
+    return [...byCode, ...byName];
+  }
 
   /** "es", " ES", "Испания" → "ES"; unknown text stays for the server to reject. */
   fixGeo(): void {

@@ -68,6 +68,8 @@ export const COUNTRIES: Record<string, string> = {
   TN: 'Тунис',
   NG: 'Нигерия',
   KE: 'Кения',
+  TZ: 'Танзания',
+  ZM: 'Замбия',
   ZA: 'ЮАР',
   US: 'США',
   GB: 'Великобритания',
