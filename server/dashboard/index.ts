@@ -177,9 +177,12 @@ const HIRING_METRICS: HiringMetricDef[] = [
   { id: 'hiring.fired', label: 'Уволено', flow: (p, d) => inside(p.fired, d) },
 ];
 
+/** Tiles on the hiring tab (Илья, 19.11); the rest stay for drill-downs and the panels. */
+const HIRING_TILES = new Set(['hiring.started', 'hiring.passed']);
+
 function hiringBlock(people: Person[], periods: DashPeriod[]): DashBlock {
   const period = periods.at(-1)!;
-  const metrics: DashMetric[] = HIRING_METRICS.map((m) => {
+  const metrics: DashMetric[] = HIRING_METRICS.filter((m) => HIRING_TILES.has(m.id)).map((m) => {
     const pick = (p: DashPeriod) => people.filter((x) => (m.flow ? m.flow(x, p) : m.snapshot!(x, endOf(p))));
     const counted = pick(period);
     return {

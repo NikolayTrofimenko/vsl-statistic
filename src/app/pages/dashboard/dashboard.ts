@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { ApiService } from '../../core/services/api.service';
 import type { DashBlock, DashBuyingRow, Dashboard, DashMetric, DashPeriodKind } from '../../../shared/dashboard.types';
 
@@ -15,6 +16,19 @@ type BuyerSort = 'profit' | 'roi' | 'cost' | 'tested' | 'hits' | 'startedScaling
 import { DetailDialog, DetailDialogData } from './detail-dialog';
 
 const TAB_KEY = 'vslstat.dashboard.tab';
+const LAYOUT_KEY = 'vslstat.dashboard.layout';
+
+/** Per tab: tile order and sizes (in grid cells), as this browser's owner arranged them. */
+type TabLayout = { order: string[]; size: Record<string, { w: number; h: number }> };
+type Layouts = Record<string, TabLayout>;
+
+function readLayouts(): Layouts {
+  try {
+    return JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? '{}') as Layouts;
+  } catch {
+    return {};
+  }
+}
 
 function readStored(key: string): string | null {
   try {
@@ -32,7 +46,7 @@ function readStored(key: string): string | null {
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [MatButtonModule, MatButtonToggleModule, MatDialogModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
+  imports: [MatButtonModule, MatButtonToggleModule, MatDialogModule, MatIconModule, MatProgressBarModule, MatTooltipModule, CdkDropList, CdkDrag, CdkDragHandle],
   template: `
     <header class="page-header">
       <div>
@@ -98,15 +112,33 @@ function readStored(key: string): string | null {
         @if (b.id === activeTab()) {
         <section class="block">
           @if (!panelsOnly.has(b.id)) {
-          <div class="tiles">
-            @for (m of b.metrics; track m.id) {
+          @if (layouts()[b.id]) {
+            <div class="layout-reset"><button mat-button (click)="resetLayout(b.id)"><mat-icon>restart_alt</mat-icon>Сбросить раскладку</button></div>
+          }
+          <div class="tiles" cdkDropList cdkDropListOrientation="mixed" (cdkDropListDropped)="drop(b, $event)">
+            @for (m of ordered(b); track m.id) {
               <button
+                #tileEl
                 class="tile"
+                cdkDrag
+                (cdkDragEnded)="swallowClick()"
+                [style.grid-column]="'span ' + sizeOf(b.id, m.id).w"
+                [style.grid-row]="'span ' + sizeOf(b.id, m.id).h"
+                [class.wide]="sizeOf(b.id, m.id).w > 1"
+                [class.tall]="sizeOf(b.id, m.id).h > 1"
                 [class.pending]="m.status === 'pending'"
                 [class.clickable]="m.detail"
-                [disabled]="!m.detail"
                 (click)="openDetail(m)"
               >
+                <span class="grip" cdkDragHandle matTooltip="Перетащи, чтобы поменять порядок" (click)="$event.stopPropagation()">
+                  <mat-icon>drag_indicator</mat-icon>
+                </span>
+                <span
+                  class="resize"
+                  matTooltip="Потяни, чтобы растянуть"
+                  (pointerdown)="startResize($event, b.id, m.id, tileEl)"
+                  (click)="$event.stopPropagation()"
+                ></span>
                 <span class="label">{{ m.label }}</span>
                 @if (m.status === 'pending') {
                   <span class="value muted">—</span>
@@ -353,9 +385,74 @@ function readStored(key: string): string | null {
       .tiles {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        grid-auto-rows: minmax(150px, auto);
+        grid-auto-flow: dense;
         gap: 12px;
       }
+      .layout-reset {
+        display: flex;
+        justify-content: flex-end;
+        margin: -6px 0 6px;
+      }
+      .layout-reset button {
+        font-size: 12px;
+        color: var(--text-faint);
+      }
+      .grip,
+      .resize {
+        position: absolute;
+        opacity: 0;
+        transition: opacity 120ms;
+        color: var(--text-faint);
+      }
+      .tile:hover .grip,
+      .tile:hover .resize {
+        opacity: 1;
+      }
+      .grip {
+        top: 6px;
+        right: 6px;
+        display: flex;
+        cursor: grab;
+      }
+      .grip mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+      .resize {
+        right: 0;
+        bottom: 0;
+        width: 16px;
+        height: 16px;
+        cursor: nwse-resize;
+        background: linear-gradient(135deg, transparent 50%, var(--divider-strong) 50%, var(--divider-strong) 60%, transparent 60%, transparent 72%, var(--divider-strong) 72%, var(--divider-strong) 82%, transparent 82%);
+        touch-action: none;
+      }
+      .tile.cdk-drag-preview {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      }
+      .tile.cdk-drag-placeholder {
+        opacity: 0.35;
+      }
+      .tiles.cdk-drop-list-dragging .tile:not(.cdk-drag-placeholder) {
+        transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+      }
+      .tile.wide .value,
+      .tile.tall .value {
+        font-size: 44px;
+      }
+      .tile.wide .label,
+      .tile.tall .label {
+        font-size: 14px;
+      }
+      .tile.tall .spark {
+        flex: 1 1 28px;
+        height: auto;
+        min-height: 28px;
+      }
       .tile {
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -631,7 +728,86 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   readonly Math = Math;
   /** Tabs shown as their panels only, no tiles (hiring: the funnel and the cohort say it all). */
-  readonly panelsOnly = new Set(['hiring']);
+  readonly panelsOnly = new Set<string>();
+
+  /* ---------- tile layout: drag to reorder, pull the corner to resize (kept in this browser) ---------- */
+
+  readonly layouts = signal<Layouts>(readLayouts());
+  /** A drag or a resize ends with a click on the tile; don't open its detail then. */
+  private quietUntil = 0;
+
+  ordered(b: DashBlock): DashMetric[] {
+    const order = this.layouts()[b.id]?.order ?? [];
+    const rank = (id: string) => {
+      const i = order.indexOf(id);
+      return i < 0 ? order.length + b.metrics.findIndex((m) => m.id === id) : i;
+    };
+    return [...b.metrics].sort((a, c) => rank(a.id) - rank(c.id));
+  }
+
+  sizeOf(tab: string, id: string): { w: number; h: number } {
+    return this.layouts()[tab]?.size[id] ?? { w: 1, h: 1 };
+  }
+
+  private saveLayout(tab: string, change: (l: TabLayout) => TabLayout): void {
+    const all = { ...this.layouts() };
+    all[tab] = change(all[tab] ?? { order: [], size: {} });
+    this.layouts.set(all);
+    try {
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify(all));
+    } catch {
+      /* private window: the layout lives until reload */
+    }
+  }
+
+  drop(b: DashBlock, e: CdkDragDrop<unknown>): void {
+    const ids = this.ordered(b).map((m) => m.id);
+    const [moved] = ids.splice(e.previousIndex, 1);
+    ids.splice(e.currentIndex, 0, moved!);
+    this.saveLayout(b.id, (l) => ({ ...l, order: ids }));
+  }
+
+  swallowClick(): void {
+    this.quietUntil = Date.now() + 300;
+  }
+
+  resetLayout(tab: string): void {
+    const all = { ...this.layouts() };
+    delete all[tab];
+    this.layouts.set(all);
+    try {
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify(all));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  startResize(e: PointerEvent, tab: string, id: string, tile: HTMLElement): void {
+    e.preventDefault();
+    e.stopPropagation();
+    const grid = tile.parentElement!;
+    const style = getComputedStyle(grid);
+    const cols = style.gridTemplateColumns.split(' ').filter(Boolean);
+    const gap = parseFloat(style.columnGap) || 12;
+    const colW = parseFloat(cols[0] ?? '220') + gap;
+    const rowH = 150 + (parseFloat(style.rowGap) || 12);
+    const rect = tile.getBoundingClientRect();
+    const start = { x: e.clientX, y: e.clientY };
+    const clamp = (n: number, max: number) => Math.max(1, Math.min(max, n));
+    const move = (ev: PointerEvent) => {
+      const w = clamp(Math.round((rect.width + ev.clientX - start.x + gap) / colW), cols.length);
+      const h = clamp(Math.round((rect.height + ev.clientY - start.y + gap) / rowH), 4);
+      const cur = this.sizeOf(tab, id);
+      if (cur.w !== w || cur.h !== h) this.saveLayout(tab, (l) => ({ ...l, size: { ...l.size, [id]: { w, h } } }));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      this.swallowClick();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
 
   readonly buyerColumns: { key: BuyerSort; label: string; hint: string }[] = [
     { key: 'profit', label: 'Прибыль', hint: 'Подтверждённый доход − расход' },
@@ -739,7 +915,7 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
 
   openDetail(m: DashMetric): void {
-    if (!m.detail) return;
+    if (!m.detail || Date.now() < this.quietUntil) return;
     this.dialog.open<DetailDialog, DetailDialogData>(DetailDialog, {
       width: '900px',
       maxWidth: '96vw',
