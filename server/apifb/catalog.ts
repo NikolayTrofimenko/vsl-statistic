@@ -1,4 +1,7 @@
+import { scopedLogger } from '../logger';
 import { googleConnected, googleFetch } from '../drive/google';
+
+const log = scopedLogger('apifb-catalog');
 
 /** Index spreadsheet «Пиксельная» — vertical tabs → geo → Google Doc with APIFB lines. */
 const INDEX_SHEET_ID = '1mNE5jDONDqsoEb7eLY9pe3yBmeEO0jhyh2LruR6f0p4';
@@ -7,6 +10,16 @@ const INDEX_SHEET_ID = '1mNE5jDONDqsoEb7eLY9pe3yBmeEO0jhyh2LruR6f0p4';
 const SKIP_TAB = /шаблон/i;
 
 const CACHE_TTL_MS = 60_000;
+
+/**
+ * Known tabs if Sheets API is off in the GCP project (403). Geos still load
+ * via CSV export (Drive). New directions need Sheets API enabled once.
+ */
+const FALLBACK_VERTICALS: ApifbVertical[] = [
+  { id: 'prost', label: 'Прост/потенция', gid: 0 },
+  { id: 'diabetes', label: 'Диабет', gid: 133208286 },
+  { id: 'weightloss', label: 'Похудалка', gid: 1703629771 },
+];
 
 export interface ApifbVertical {
   id: string;
@@ -22,34 +35,59 @@ export interface ApifbGeo {
   docUrl: string;
 }
 
-let verticalsCache: { at: number; list: ApifbVertical[] } | null = null;
+let verticalsCache: { at: number; list: ApifbVertical[]; fromApi: boolean } | null = null;
 
 /** Drop cached sheet tabs — next list/geos call re-reads Google. */
 export function invalidateApifbCatalog(): void {
   verticalsCache = null;
 }
 
+export interface ApifbVerticalsList {
+  list: ApifbVertical[];
+  /** Set when Sheets API is off / failed and we served FALLBACK_VERTICALS. */
+  warning: string | null;
+}
+
+const SHEETS_API_HINT =
+  'Google Sheets API выключен в GCP — новые вкладки не подтянутся. ' +
+  'Включи: https://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=707847591101 ' +
+  'Сейчас показаны Прост / Диабет / Похудалка.';
+
 /**
- * Directions = sheet tabs of «Пиксельная» (except Шаблон), discovered via
- * Sheets API. New tabs show up after refresh / cache expiry.
+ * Directions = sheet tabs of «Пиксельная» (except Шаблон). Prefers Sheets API;
+ * on 403 / failure falls back to the known three tabs so the page still works.
  */
-export async function listApifbVerticals(fresh = false): Promise<ApifbVertical[]> {
+export async function listApifbVerticals(fresh = false): Promise<ApifbVerticalsList> {
   if (!googleConnected()) {
     throw new Error('Google Drive не подключён — нужен доступ к таблице «Пиксельная» и докам.');
   }
   if (!fresh && verticalsCache && Date.now() - verticalsCache.at < CACHE_TTL_MS) {
-    return verticalsCache.list;
+    return {
+      list: verticalsCache.list,
+      warning: verticalsCache.fromApi ? null : SHEETS_API_HINT,
+    };
   }
 
+  try {
+    const list = await fetchVerticalsFromSheetsApi();
+    verticalsCache = { at: Date.now(), list, fromApi: true };
+    return { list, warning: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.warn(`Sheets API unavailable, using fallback tabs: ${message}`);
+    verticalsCache = { at: Date.now(), list: FALLBACK_VERTICALS, fromApi: false };
+    return { list: FALLBACK_VERTICALS, warning: SHEETS_API_HINT };
+  }
+}
+
+async function fetchVerticalsFromSheetsApi(): Promise<ApifbVertical[]> {
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${INDEX_SHEET_ID}` +
     `?fields=${encodeURIComponent('sheets.properties(sheetId,title,index)')}`;
   const res = await googleFetch(url);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(
-      `Не удалось прочитать вкладки «Пиксельной» (HTTP ${res.status}). ${body.slice(0, 200)}`,
-    );
+    throw new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`);
   }
   const json = (await res.json()) as {
     sheets?: { properties?: { sheetId?: number; title?: string; index?: number } }[];
@@ -67,13 +105,12 @@ export async function listApifbVerticals(fresh = false): Promise<ApifbVertical[]
   if (!list.length) {
     throw new Error('В таблице «Пиксельная» нет вкладок-направлений (кроме Шаблон).');
   }
-  verticalsCache = { at: Date.now(), list };
   return list;
 }
 
 /** Geos for one vertical, read from that tab of the index sheet. */
 export async function listApifbGeos(verticalId: string, fresh = false): Promise<ApifbGeo[]> {
-  const verticals = await listApifbVerticals(fresh);
+  const { list: verticals } = await listApifbVerticals(fresh);
   const vertical = verticals.find((v) => v.id === verticalId);
   if (!vertical) throw new Error('Неизвестное направление — нажми «Обновить из Google».');
 

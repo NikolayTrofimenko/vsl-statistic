@@ -11,16 +11,16 @@ import type {
   ApifbPreview,
   ApifbSendInput,
   ApifbSendResult,
-  ApifbVerticalInfo,
+  ApifbVerticalsResult,
 } from '../../src/shared/api.types';
 
 /** Admin only — `apifb:*` in `channelAccess()`. */
 export function registerApifbHandlers(): void {
   handle('apifb:send', (input: ApifbSendInput): Promise<ApifbSendResult> => sendApifbEvent(input));
-  handle('apifb:verticals', async (fresh?: boolean): Promise<ApifbVerticalInfo[]> => {
+  handle('apifb:verticals', async (fresh?: boolean): Promise<ApifbVerticalsResult> => {
     if (fresh) invalidateApifbCatalog();
-    const list = await listApifbVerticals(Boolean(fresh));
-    return list.map(({ id, label }) => ({ id, label }));
+    const { list, warning } = await listApifbVerticals(Boolean(fresh));
+    return { items: list.map(({ id, label }) => ({ id, label })), warning };
   });
   handle('apifb:geos', async (verticalId: string, fresh?: boolean): Promise<ApifbGeoInfo[]> => {
     const geos = await listApifbGeos(String(verticalId ?? ''), Boolean(fresh));

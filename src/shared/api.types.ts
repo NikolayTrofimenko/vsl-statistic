@@ -581,6 +581,12 @@ export interface ApifbVerticalInfo {
   label: string;
 }
 
+/** Directions from «Пиксельная»; `warning` if Sheets API is off and we used a fallback. */
+export interface ApifbVerticalsResult {
+  items: ApifbVerticalInfo[];
+  warning: string | null;
+}
+
 export interface ApifbGeoInfo {
   id: string;
   label: string;
@@ -1095,7 +1101,7 @@ export interface VslStatApi {
   apifb: {
     send(input: ApifbSendInput): Promise<ApifbSendResult>;
     /** Sheet tabs of «Пиксельная»; `fresh` bypasses the short server cache. */
-    verticals(fresh?: boolean): Promise<ApifbVerticalInfo[]>;
+    verticals(fresh?: boolean): Promise<ApifbVerticalsResult>;
     geos(verticalId: string, fresh?: boolean): Promise<ApifbGeoInfo[]>;
     preview(verticalId: string, geoId: string): Promise<ApifbPreview>;
     /** Pull parsed events from the Doc / paste (no Meta call yet). */

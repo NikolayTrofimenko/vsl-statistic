@@ -291,32 +291,47 @@ export class ApifbPage implements OnInit {
     await this.reloadVerticals(false);
   }
 
-  /** Re-read sheet tabs + geos from «Пиксельная». */
+  /** Re-read sheet tabs + geos from «Пиксельная». Keeps current UI if Google fails. */
   async refreshCatalog(): Promise<void> {
-    const keep = this.verticalId();
-    await this.reloadVerticals(true, keep);
-    this.snack.open('Каталог обновлён из Google', 'OK', { duration: 3000 });
+    const keepVertical = this.verticalId();
+    const keepGeo = this.geoId();
+    const ok = await this.reloadVerticals(true, keepVertical, keepGeo);
+    if (ok) this.snack.open('Каталог обновлён из Google', 'OK', { duration: 3000 });
   }
 
-  private async reloadVerticals(fresh: boolean, preferId?: string): Promise<void> {
+  private async reloadVerticals(
+    fresh: boolean,
+    preferVertical?: string,
+    preferGeo?: string,
+  ): Promise<boolean> {
     this.loading.set(true);
-    this.preview.set(null);
-    this.loadedEvents = null;
-    this.result.set(null);
     try {
-      const list = await this.api.apifb.verticals(fresh);
+      const { items: list, warning } = await this.api.apifb.verticals(fresh);
+      const nextVertical =
+        (preferVertical && list.some((v) => v.id === preferVertical) ? preferVertical : null) ||
+        list[0]?.id ||
+        '';
+      const geos = nextVertical ? await this.api.apifb.geos(nextVertical, fresh) : [];
+      const nextGeo = preferGeo && geos.some((g) => g.id === preferGeo) ? preferGeo : '';
+
+      // Apply only after both calls succeed — so a Google error doesn't wipe the form.
       this.verticals.set(list);
-      const next = (preferId && list.some((v) => v.id === preferId) ? preferId : null) || list[0]?.id || '';
-      this.verticalId.set(next);
-      if (next) {
-        this.geos.set(await this.api.apifb.geos(next, fresh));
-        this.geoId.set('');
-      } else {
-        this.geos.set([]);
-        this.geoId.set('');
+      this.verticalId.set(nextVertical);
+      this.geos.set(geos);
+      this.geoId.set(nextGeo);
+      if (fresh) {
+        this.preview.set(null);
+        this.loadedEvents = null;
+        this.result.set(null);
       }
+      if (warning) {
+        this.snack.open(warning, 'OK', { duration: 10000 });
+        return false;
+      }
+      return true;
     } catch (err) {
-      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 6000 });
+      this.snack.open(err instanceof Error ? err.message : String(err), 'OK', { duration: 8000 });
+      return false;
     } finally {
       this.loading.set(false);
     }
